@@ -129,4 +129,13 @@
   <data name="Crop_Cancel" xml:space="preserve">
     <value>取消</value>
   </data>
+  <data name="Hud_Pause" xml:space="preserve">
+    <value>暂停</value>
+  </data>
+  <data name="Hud_Resume" xml:space="preserve">
+    <value>继续</value>
+  </data>
+  <data name="Hud_Stop" xml:space="preserve">
+    <value>停止</value>
+  </data>
 </root>
