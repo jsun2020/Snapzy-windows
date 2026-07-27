@@ -3,6 +3,7 @@ using System.Windows;
 using Snapzy.Core;
 using Snapzy.Core.Localization;
 using Snapzy.Core.Settings;
+using Snapzy.App.Hotkeys;
 using Snapzy.App.Tray;
 
 namespace Snapzy.App;
@@ -11,6 +12,7 @@ public partial class App : System.Windows.Application
 {
     private Mutex? _mutex;
     private TrayIcon? _tray;
+    private HotkeyManager? _hotkeys;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -51,6 +53,23 @@ public partial class App : System.Windows.Application
             SettingsStore.Save(settings, AppPaths.SettingsFile);
             _tray.Balloon("Snapzy", Strings.Get("FirstRun_Welcome"));
         }
+        _hotkeys = new HotkeyManager(new()
+        {
+            ["CaptureFullscreen"] = AppActions.CaptureFullscreen,
+            ["CaptureArea"] = AppActions.CaptureArea,
+            ["CaptureAreaAnnotate"] = AppActions.CaptureAreaAnnotate,
+            ["RecordToggle"] = AppActions.ToggleRecording,
+            ["OpenAnnotate"] = () => AppActions.OpenAnnotate(null),
+            ["OpenHistory"] = AppActions.OpenHistory,
+        });
+        AppActions.Hotkeys = _hotkeys;
+        var failedHotkeys = _hotkeys.RegisterAll(settings.Hotkeys);
+        if (failedHotkeys.Count > 0)
+        {
+            Log.Error("Hotkey registration failed for: " + string.Join(", ", failedHotkeys));
+            _tray.Balloon("Snapzy", Strings.Get("Toast_HotkeyConflict") + ": " + string.Join(", ", failedHotkeys));
+        }
+
         AppActions.History.CleanupOlderThan(settings.RetentionDays);
         Log.Info("Snapzy started");
     }
@@ -66,6 +85,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _hotkeys?.Dispose();
         _tray?.Dispose();
         _mutex?.Dispose();
         base.OnExit(e);

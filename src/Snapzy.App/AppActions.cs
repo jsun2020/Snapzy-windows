@@ -10,6 +10,7 @@ public static class AppActions
     public static AppSettings Settings { get; private set; } = AppSettings.CreateDefault();
     public static HistoryStore History { get; private set; } = null!;
     public static TrayIcon? Tray { get; set; }
+    public static Hotkeys.HotkeyManager? Hotkeys { get; set; }
 
     public static void Initialize(AppSettings settings)
     {
