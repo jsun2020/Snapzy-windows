@@ -112,6 +112,7 @@ public static class AppActions
     }
     private static RecordingController? _recorder;
     private static Recorder.RecordingHud? _hud;
+    private static WasapiLoopbackRecorder? _sysAudio;
 
     public static async void ToggleRecording()
     {
@@ -142,7 +143,8 @@ public static class AppActions
                 MicDevice = Settings.MicDevice,
             };
             var baseName = Path.GetFileNameWithoutExtension(FileNamer.NewCaptureName(DateTime.Now, "mp4"));
-            _recorder = new RecordingController(AppPaths.FfmpegExe, AppPaths.CapturesDir);
+            _sysAudio = Settings.RecordSystemAudio ? new WasapiLoopbackRecorder() : null;
+            _recorder = new RecordingController(AppPaths.FfmpegExe, AppPaths.CapturesDir, null, _sysAudio);
             if (!await _recorder.StartAsync(opts, baseName))
             {
                 _recorder = null;
@@ -187,6 +189,8 @@ public static class AppActions
         Tray?.SetRecording(false);
         var result = await rec.StopAsync(Settings.RecordingOutput);
         _recorder = null;
+        _sysAudio?.Dispose();
+        _sysAudio = null;
         if (result.Error is not null)
         {
             Log.Error("Recording failed: " + result.Error);
@@ -196,6 +200,7 @@ public static class AppActions
         HistoryEntry? entry = null;
         if (result.Mp4Path is not null) entry = History.Add(Path.GetFileName(result.Mp4Path), "video");
         if (result.GifPath is not null) entry = History.Add(Path.GetFileName(result.GifPath), "gif");
+        if (result.WebpPath is not null) entry = History.Add(Path.GetFileName(result.WebpPath), "gif");
         Log.Info($"Recording saved: {result.Mp4Path ?? result.GifPath}");
         Tray?.Balloon("Snapzy", Strings.Get("Toast_RecordingSaved"));
         if (Settings.Recording.ShowQuickAccess && entry is not null)

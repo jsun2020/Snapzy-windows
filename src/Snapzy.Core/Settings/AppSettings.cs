@@ -22,8 +22,9 @@ public class AppSettings
     public PostCaptureOptions Screenshot { get; set; } = new();
     public PostCaptureOptions Recording { get; set; } = new() { CopyToClipboard = false };
     public int RecordingFps { get; set; } = 30;
-    public string RecordingOutput { get; set; } = "mp4";   // "mp4" | "gif" | "both"
+    public string RecordingOutput { get; set; } = "mp4";   // "mp4" | "gif" | "webp" | "both" (mp4+gif) | "mp4+webp"
     public bool RecordCursor { get; set; } = true;
+    public bool RecordSystemAudio { get; set; } = false;
     public string MicDevice { get; set; } = "";            // empty = no audio
     public int QuickAccessTimeoutSeconds { get; set; } = 8;
     public int RetentionDays { get; set; } = 0;            // 0 = forever

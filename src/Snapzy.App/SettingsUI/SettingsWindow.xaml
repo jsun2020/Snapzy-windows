@@ -48,6 +48,7 @@
                     <TextBlock x:Name="LblOutput" Margin="0,14,0,4" />
                     <ComboBox x:Name="OutputCombo" Width="200" HorizontalAlignment="Left" />
                     <CheckBox x:Name="ChkCursor" Margin="0,16,0,0" />
+                    <CheckBox x:Name="ChkSystemAudio" Margin="0,8,0,0" />
                     <TextBlock x:Name="LblMic" Margin="0,16,0,4" />
                     <StackPanel Orientation="Horizontal">
                         <ComboBox x:Name="MicCombo" Width="280" />

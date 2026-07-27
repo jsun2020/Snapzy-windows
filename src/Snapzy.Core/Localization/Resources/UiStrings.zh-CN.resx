@@ -252,6 +252,9 @@
   <data name="Set_RecordCursor" xml:space="preserve">
     <value>包含鼠标指针</value>
   </data>
+  <data name="Set_SystemAudio" xml:space="preserve">
+    <value>录制系统声音</value>
+  </data>
   <data name="Set_MicDevice" xml:space="preserve">
     <value>麦克风</value>
   </data>

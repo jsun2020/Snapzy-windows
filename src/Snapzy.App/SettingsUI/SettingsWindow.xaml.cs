@@ -31,7 +31,7 @@ public partial class SettingsWindow : Window
     private static readonly string[] FormatValues = { "png", "jpg", "webp" };
     private static readonly string[] FsModeValues = { "currentMonitor", "allMonitors" };
     private static readonly int[] FpsValues = { 15, 24, 30, 60 };
-    private static readonly string[] OutputValues = { "mp4", "gif", "both" };
+    private static readonly string[] OutputValues = { "mp4", "gif", "webp", "both", "mp4+webp" };
     private static readonly int[] RetentionValues = { 0, 7, 30, 90 };
 
     private SettingsWindow(AppSettings settings, Action onSaved)
@@ -87,6 +87,7 @@ public partial class SettingsWindow : Window
         LblFps.Text = Strings.Get("Set_Fps");
         LblOutput.Text = Strings.Get("Set_Output");
         ChkCursor.Content = Strings.Get("Set_RecordCursor");
+        ChkSystemAudio.Content = Strings.Get("Set_SystemAudio");
         LblMic.Text = Strings.Get("Set_MicDevice");
         BtnRefreshMics.Content = Strings.Get("Set_Refresh");
 
@@ -131,10 +132,13 @@ public partial class SettingsWindow : Window
 
         OutputCombo.Items.Add("MP4");
         OutputCombo.Items.Add("GIF");
+        OutputCombo.Items.Add("WebP");
         OutputCombo.Items.Add("MP4 + GIF");
+        OutputCombo.Items.Add("MP4 + WebP");
         OutputCombo.SelectedIndex = Math.Max(0, Array.IndexOf(OutputValues, _settings.RecordingOutput));
 
         ChkCursor.IsChecked = _settings.RecordCursor;
+        ChkSystemAudio.IsChecked = _settings.RecordSystemAudio;
         PopulateMics();
 
         BuildHotkeyRows();
@@ -266,6 +270,7 @@ public partial class SettingsWindow : Window
         _settings.RecordingFps = FpsValues[Math.Max(0, FpsCombo.SelectedIndex)];
         _settings.RecordingOutput = OutputValues[Math.Max(0, OutputCombo.SelectedIndex)];
         _settings.RecordCursor = ChkCursor.IsChecked == true;
+        _settings.RecordSystemAudio = ChkSystemAudio.IsChecked == true;
         _settings.MicDevice = MicCombo.SelectedIndex <= 0 ? "" : (string)MicCombo.SelectedItem!;
         _settings.RetentionDays = RetentionValues[Math.Max(0, RetentionCombo.SelectedIndex)];
         foreach (var (action, row) in _hotkeyRows)

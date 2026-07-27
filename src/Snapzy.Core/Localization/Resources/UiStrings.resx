@@ -252,6 +252,9 @@
   <data name="Set_RecordCursor" xml:space="preserve">
     <value>Include mouse cursor</value>
   </data>
+  <data name="Set_SystemAudio" xml:space="preserve">
+    <value>Record system audio</value>
+  </data>
   <data name="Set_MicDevice" xml:space="preserve">
     <value>Microphone</value>
   </data>
