@@ -65,6 +65,25 @@ public class TableReconstructorTests
     }
 
     [Fact]
+    public void ToLooseTable_Prose_StillReturnsRows()
+    {
+        // Forced-table mode must return rows even for non-tabular layouts.
+        var words = new List<OcrWordBox>
+        {
+            W("This", 10, 10), W("is", 60, 10), W("plain", 95, 10),
+            W("with", 10, 40), W("no", 65, 40), W("columns", 100, 40),
+        };
+        var table = TableReconstructor.ToLooseTable(words);
+        Assert.NotNull(table);
+        Assert.Equal(2, table.Length);
+        Assert.Equal("This is plain", table[0][0]);
+    }
+
+    [Fact]
+    public void ToLooseTable_NoWords_ReturnsNull() =>
+        Assert.Null(TableReconstructor.ToLooseTable(new List<OcrWordBox>()));
+
+    [Fact]
     public void ToTsv_JoinsCellsWithTabs()
     {
         var tsv = TableReconstructor.ToTsv(new[]

@@ -54,6 +54,23 @@ public static class TableReconstructor
     public static string ToTsv(string[][] table) =>
         string.Join("\n", table.Select(row => string.Join("\t", row)));
 
+    /// <summary>
+    /// Forced-table reconstruction: rows and gap-split cells without the
+    /// "looks like a table" validation, so any recognized text becomes rows of
+    /// cells. Used by the explicit Copy-Table action. Null only when no words.
+    /// </summary>
+    public static string[][]? ToLooseTable(IReadOnlyList<OcrWordBox> words)
+    {
+        if (words.Count == 0) return null;
+        var medianHeight = Median(words.Select(w => w.Height));
+        if (medianHeight <= 0) return null;
+        var rows = GroupIntoRows(words, medianHeight);
+        var gapThreshold = medianHeight * CellGapFactor;
+        return rows
+            .Select(r => SplitIntoCells(r, gapThreshold).Select(c => c.Text).ToArray())
+            .ToArray();
+    }
+
     private static List<List<OcrWordBox>> GroupIntoRows(IReadOnlyList<OcrWordBox> words, double medianHeight)
     {
         var rows = new List<List<OcrWordBox>>();

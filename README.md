@@ -56,7 +56,14 @@ Old screenshots can be OCR'd from the history window's right-click menu.
 **Table recognition (v1.2)**: when the image contains a table (spreadsheet
 screenshots, reports), Snapzy detects the rows and columns from the text layout
 and copies tab-separated cells - paste straight into Excel/WPS and each value
-lands in its own cell. Non-tabular images copy as plain text, as before.
+lands in its own cell. The history right-click menu offers both modes
+explicitly: **Copy text (OCR)** always copies plain lines, **Copy table (OCR)**
+always copies rows/cells. The `Ctrl+Shift+2` hotkey auto-detects.
+
+Known engine limitation: the in-box Windows OCR cannot see cells that contain
+only a single isolated character (a demo grid of "a b c d" returns no text at
+all - "No text found"); real-world cells with dates, numbers or words work.
+When nothing is recognized the clipboard is left unchanged.
 
 ## Scrolling capture (v1.1)
 

@@ -127,7 +127,8 @@ public partial class HistoryWindow : Window
                 CaptureFlow.CopyImageToClipboard(_store.GetFullPath(entry))));
             menu.Items.Add(MakeMenuItem(Strings.Get("QA_Annotate"), () =>
                 AppActions.OpenAnnotate(_store.GetFullPath(entry))));
-            menu.Items.Add(MakeMenuItem(Strings.Get("Hist_OcrCopy"), () => OcrToClipboard(entry)));
+            menu.Items.Add(MakeMenuItem(Strings.Get("Hist_OcrCopy"), () => OcrToClipboard(entry, tableMode: false)));
+            menu.Items.Add(MakeMenuItem(Strings.Get("Hist_OcrTableCopy"), () => OcrToClipboard(entry, tableMode: true)));
         }
         menu.Items.Add(MakeMenuItem(Strings.Get("QA_Open"), () => OpenFile(entry)));
         menu.Items.Add(MakeMenuItem(Strings.Get("QA_Folder"), () =>
@@ -156,7 +157,7 @@ public partial class HistoryWindow : Window
         return item;
     }
 
-    private async void OcrToClipboard(HistoryEntry entry)
+    private async void OcrToClipboard(HistoryEntry entry, bool tableMode)
     {
         try
         {
@@ -166,7 +167,10 @@ public partial class HistoryWindow : Window
                 return;
             }
             using var bmp = new System.Drawing.Bitmap(_store.GetFullPath(entry));
-            var ocr = await Snapzy.Core.Ocr.OcrService.RecognizeForClipboardAsync(bmp);
+            var ocr = tableMode
+                ? await Snapzy.Core.Ocr.OcrService.RecognizeTableAsync(bmp)
+                : new Snapzy.Core.Ocr.OcrClipboardResult(
+                    await Snapzy.Core.Ocr.OcrService.RecognizeBitmapAsync(bmp), false, 0, 0);
             if (string.IsNullOrWhiteSpace(ocr.Text))
             {
                 AppActions.Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrEmpty"));
@@ -180,6 +184,7 @@ public partial class HistoryWindow : Window
         catch (Exception ex)
         {
             Snapzy.Core.Log.Error("History OCR failed", ex);
+            AppActions.Tray?.Balloon("Snapzy", Strings.Get("Toast_CaptureFailed"));
         }
     }
 

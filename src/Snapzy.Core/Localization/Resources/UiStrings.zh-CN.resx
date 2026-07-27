@@ -342,6 +342,9 @@
   <data name="Hist_OcrCopy" xml:space="preserve">
     <value>复制文字 (OCR)</value>
   </data>
+  <data name="Hist_OcrTableCopy" xml:space="preserve">
+    <value>复制表格 (OCR)</value>
+  </data>
   <data name="Action_CaptureOcr" xml:space="preserve">
     <value>OCR 截图（复制文字）</value>
   </data>

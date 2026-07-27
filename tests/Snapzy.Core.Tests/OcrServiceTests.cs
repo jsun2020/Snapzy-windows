@@ -64,6 +64,24 @@ public class OcrServiceTests
     }
 
     [Fact]
+    public async Task RecognizeTable_ProseImage_StillReturnsTsvRows()
+    {
+        if (!OcrService.IsAvailable) return;
+        using var bmp = new Bitmap(500, 160);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.Clear(Color.White);
+            var font = new Font("Arial", 18);
+            g.DrawString("alpha beta", font, Brushes.Black, new PointF(20, 30));
+            g.DrawString("gamma delta", font, Brushes.Black, new PointF(20, 90));
+        }
+        var result = await OcrService.RecognizeTableAsync(bmp);
+        Assert.True(result.IsTable);        // forced mode always yields rows
+        Assert.Equal(2, result.Rows);
+        Assert.Contains("alpha", result.Text);
+    }
+
+    [Fact]
     public async Task Recognize_BlankImage_ReturnsEmpty()
     {
         if (!OcrService.IsAvailable) return;

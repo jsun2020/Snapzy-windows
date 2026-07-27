@@ -46,6 +46,21 @@ public static class OcrService
         return new OcrClipboardResult(string.Join("\n", lines).Trim(), false, 0, 0);
     }
 
+    /// <summary>
+    /// Explicit table mode: strict geometric reconstruction when the layout
+    /// qualifies, otherwise a loose rows/cells split - any recognized text
+    /// comes back as TSV. Empty text means the engine found no words at all
+    /// (e.g. isolated single-character cells, which Windows OCR cannot see).
+    /// </summary>
+    public static async Task<OcrClipboardResult> RecognizeTableAsync(Bitmap bmp)
+    {
+        var (_, words) = await RecognizeCoreAsync(bmp);
+        var table = TableReconstructor.ToTable(words) ?? TableReconstructor.ToLooseTable(words);
+        if (table is null) return new OcrClipboardResult("", false, 0, 0);
+        return new OcrClipboardResult(
+            TableReconstructor.ToTsv(table), true, table.Length, table.Max(r => r.Length));
+    }
+
     private static async Task<(List<string> Lines, List<OcrWordBox> Words)> RecognizeCoreAsync(Bitmap bmp)
     {
         var engine = CreateEngine() ?? throw new InvalidOperationException("No OCR language available");
