@@ -60,4 +60,19 @@
   <data name="Overlay_Hints" xml:space="preserve">
     <value>Drag to select - A: window mode - Enter: confirm - Esc: cancel</value>
   </data>
+  <data name="QA_Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="QA_Annotate" xml:space="preserve">
+    <value>Annotate</value>
+  </data>
+  <data name="QA_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="QA_Folder" xml:space="preserve">
+    <value>Folder</value>
+  </data>
+  <data name="QA_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
 </root>

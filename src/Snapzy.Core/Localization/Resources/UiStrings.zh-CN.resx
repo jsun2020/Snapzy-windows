@@ -60,4 +60,19 @@
   <data name="Overlay_Hints" xml:space="preserve">
     <value>拖动选择区域 - A：窗口模式 - Enter：确认 - Esc：取消</value>
   </data>
+  <data name="QA_Copy" xml:space="preserve">
+    <value>复制</value>
+  </data>
+  <data name="QA_Annotate" xml:space="preserve">
+    <value>标注</value>
+  </data>
+  <data name="QA_Open" xml:space="preserve">
+    <value>打开</value>
+  </data>
+  <data name="QA_Folder" xml:space="preserve">
+    <value>文件夹</value>
+  </data>
+  <data name="QA_Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
 </root>

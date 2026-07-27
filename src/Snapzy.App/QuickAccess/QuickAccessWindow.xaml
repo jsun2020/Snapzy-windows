@@ -1,0 +1,45 @@
+<Window x:Class="Snapzy.App.QuickAccess.QuickAccessWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        ResizeMode="NoResize"
+        Width="280" Height="210"
+        WindowStartupLocation="Manual">
+    <Border Background="#F0252526" CornerRadius="8" BorderBrush="#40FFFFFF" BorderThickness="1">
+        <Grid Margin="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Border Grid.Row="0" Background="#20FFFFFF" CornerRadius="4">
+                <Image x:Name="Thumb" Stretch="Uniform" Margin="4" />
+            </Border>
+            <TextBlock x:Name="Caption" Grid.Row="1" Foreground="#DDFFFFFF" FontSize="11"
+                       TextTrimming="CharacterEllipsis" Margin="2,6,2,4" />
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
+                <StackPanel.Resources>
+                    <Style TargetType="Button">
+                        <Setter Property="Margin" Value="2,0" />
+                        <Setter Property="Padding" Value="7,3" />
+                        <Setter Property="FontSize" Value="11" />
+                        <Setter Property="Background" Value="#30FFFFFF" />
+                        <Setter Property="Foreground" Value="White" />
+                        <Setter Property="BorderBrush" Value="#50FFFFFF" />
+                    </Style>
+                </StackPanel.Resources>
+                <Button x:Name="BtnCopy" Click="OnCopy" />
+                <Button x:Name="BtnAnnotate" Click="OnAnnotate" />
+                <Button x:Name="BtnOpen" Click="OnOpen" />
+                <Button x:Name="BtnFolder" Click="OnFolder" />
+                <Button x:Name="BtnDelete" Click="OnDelete" />
+                <Button x:Name="BtnClose" Content="X" Click="OnClose" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

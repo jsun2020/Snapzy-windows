@@ -87,10 +87,9 @@ public static class CaptureFlow
         }
     }
 
-    // Replaced by the Quick Access panel in a later task.
     private static void ShowQuickAccess(HistoryEntry entry, HistoryStore history, AppSettings settings)
     {
-        AppActions.Tray?.Balloon("Snapzy", entry.FileName);
+        QuickAccess.QuickAccessWindow.ShowFor(entry, history, settings);
     }
 
     public static void CopyImageToClipboard(string path)
