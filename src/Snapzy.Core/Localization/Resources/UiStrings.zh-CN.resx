@@ -138,4 +138,28 @@
   <data name="Hud_Stop" xml:space="preserve">
     <value>停止</value>
   </data>
+  <data name="Hist_Title" xml:space="preserve">
+    <value>截图历史</value>
+  </data>
+  <data name="Hist_Search" xml:space="preserve">
+    <value>按文件名搜索</value>
+  </data>
+  <data name="Hist_FilterAll" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="Hist_FilterImages" xml:space="preserve">
+    <value>图片</value>
+  </data>
+  <data name="Hist_FilterVideos" xml:space="preserve">
+    <value>视频</value>
+  </data>
+  <data name="Hist_FilterGifs" xml:space="preserve">
+    <value>GIF</value>
+  </data>
+  <data name="Hist_Empty" xml:space="preserve">
+    <value>暂无截图</value>
+  </data>
+  <data name="Hist_DeleteConfirm" xml:space="preserve">
+    <value>删除 {0} 吗？</value>
+  </data>
 </root>

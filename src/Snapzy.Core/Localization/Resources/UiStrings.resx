@@ -138,4 +138,28 @@
   <data name="Hud_Stop" xml:space="preserve">
     <value>Stop</value>
   </data>
+  <data name="Hist_Title" xml:space="preserve">
+    <value>Capture History</value>
+  </data>
+  <data name="Hist_Search" xml:space="preserve">
+    <value>Search by file name</value>
+  </data>
+  <data name="Hist_FilterAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Hist_FilterImages" xml:space="preserve">
+    <value>Images</value>
+  </data>
+  <data name="Hist_FilterVideos" xml:space="preserve">
+    <value>Videos</value>
+  </data>
+  <data name="Hist_FilterGifs" xml:space="preserve">
+    <value>GIFs</value>
+  </data>
+  <data name="Hist_Empty" xml:space="preserve">
+    <value>No captures yet</value>
+  </data>
+  <data name="Hist_DeleteConfirm" xml:space="preserve">
+    <value>Delete {0}?</value>
+  </data>
 </root>

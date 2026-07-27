@@ -136,7 +136,7 @@ public static class AppActions
         }
         Annotate.AnnotateWindow.Open(imagePath, null, History);
     }
-    public static void OpenHistory() => Stub(nameof(OpenHistory));
+    public static void OpenHistory() => HistoryBrowser.HistoryWindow.Open(History, Settings);
     public static void OpenSettings() => Stub(nameof(OpenSettings));
 
     public static void Quit()
