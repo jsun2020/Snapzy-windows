@@ -14,9 +14,35 @@ public static class OcrService
     private const int SliceHeight = 2000; // OcrEngine.MaxImageDimension is 2600
     private const int SliceOverlap = 40;
 
-    private static OcrEngine? CreateEngine() =>
-        OcrEngine.TryCreateFromUserProfileLanguages()
-        ?? OcrEngine.TryCreateFromLanguage(new Language("en-US"));
+    private static OcrEngine? CreateEngine()
+    {
+        // Prefer a Chinese engine when installed: it reads BOTH Chinese and
+        // Latin/digits, while the English engine renders CJK as garbage. The
+        // user-profile pick often lands on en-US even on Chinese systems
+        // (English display language + Chinese IME).
+        var zh = OcrEngine.AvailableRecognizerLanguages
+            .FirstOrDefault(l => l.LanguageTag.StartsWith("zh", StringComparison.OrdinalIgnoreCase));
+        if (zh is not null && OcrEngine.TryCreateFromLanguage(zh) is { } zhEngine)
+            return zhEngine;
+        return OcrEngine.TryCreateFromUserProfileLanguages()
+            ?? OcrEngine.TryCreateFromLanguage(new Language("en-US"));
+    }
+
+    private static OcrEngine? CreateEnglishEngine() =>
+        OcrEngine.TryCreateFromLanguage(new Language("en-US"));
+
+    /// <summary>
+    /// zh-engine cleanups: collapse the spaces it puts between CJK characters,
+    /// and fix hyphens read as the visually identical CJK "yi" between digits
+    /// (dates like 2017-07-01).
+    /// </summary>
+    internal static string CollapseCjkSpaces(string text)
+    {
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text, "(?<=[\\u2e80-\\u9fff\\uf900-\\ufaff])[ ]+(?=[\\u2e80-\\u9fff\\uf900-\\ufaff])", "");
+        return System.Text.RegularExpressions.Regex.Replace(
+            text, "(?<=\\d)\\s*\\u4e00\\s*(?=\\d)", "-");
+    }
 
     public static bool IsAvailable => CreateEngine() is not null;
 
@@ -29,7 +55,7 @@ public static class OcrService
     public static async Task<string> RecognizeBitmapAsync(Bitmap bmp)
     {
         var (lines, _) = await RecognizeCoreAsync(bmp);
-        return string.Join("\n", lines).Trim();
+        return CollapseCjkSpaces(string.Join("\n", lines)).Trim();
     }
 
     /// <summary>
@@ -42,8 +68,9 @@ public static class OcrService
         var (lines, words) = await RecognizeCoreAsync(bmp);
         var table = TableReconstructor.ToTable(words);
         if (table is not null)
-            return new OcrClipboardResult(TableReconstructor.ToTsv(table), true, table.Length, table[0].Length);
-        return new OcrClipboardResult(string.Join("\n", lines).Trim(), false, 0, 0);
+            return new OcrClipboardResult(
+                CollapseCjkSpaces(TableReconstructor.ToTsv(table)), true, table.Length, table[0].Length);
+        return new OcrClipboardResult(CollapseCjkSpaces(string.Join("\n", lines)).Trim(), false, 0, 0);
     }
 
     /// <summary>
@@ -60,16 +87,21 @@ public static class OcrService
         if (cells is not null)
         {
             var grid = await RecognizeGridAsync(bmp, cells);
-            if (grid.Any(row => row.Any(c => c.Length > 0)))
+            // Drop fully empty leading/trailing rows (border shadows etc.)
+            var rowsList = grid.ToList();
+            while (rowsList.Count > 0 && rowsList[^1].All(c => c.Length == 0)) rowsList.RemoveAt(rowsList.Count - 1);
+            while (rowsList.Count > 0 && rowsList[0].All(c => c.Length == 0)) rowsList.RemoveAt(0);
+            if (rowsList.Count > 0)
                 return new OcrClipboardResult(
-                    TableReconstructor.ToTsv(grid), true, grid.Length, grid.Max(r => r.Length));
+                    CollapseCjkSpaces(TableReconstructor.ToTsv(rowsList.ToArray())),
+                    true, rowsList.Count, rowsList.Max(r => r.Length));
         }
 
         var (_, words) = await RecognizeCoreAsync(bmp);
         var table = TableReconstructor.ToTable(words) ?? TableReconstructor.ToLooseTable(words);
         if (table is null) return new OcrClipboardResult("", false, 0, 0);
         return new OcrClipboardResult(
-            TableReconstructor.ToTsv(table), true, table.Length, table.Max(r => r.Length));
+            CollapseCjkSpaces(TableReconstructor.ToTsv(table)), true, table.Length, table.Max(r => r.Length));
     }
 
     /// <summary>
@@ -110,13 +142,28 @@ public static class OcrService
             }
             var attemptB = await ComposeAndRecognizeRowAsync(bmp, row, contents, perGlyphHeight: true);
             var filledB = attemptB.Count(t => t.Length > 0);
-            result[r] = filledB > filledA ? attemptB : attemptA;
+            var best = filledB > filledA ? attemptB : attemptA;
+            var bestFilled = Math.Max(filledA, filledB);
+            if (bestFilled < row.Length && CreateEnglishEngine() is { } en)
+            {
+                // The preferred (often zh) engine is weaker on isolated Latin
+                // glyphs; give the English engine a shot at the stragglers.
+                var attemptC = await ComposeAndRecognizeRowAsync(bmp, row, contents, perGlyphHeight: false, en);
+                var filledC = attemptC.Count(t => t.Length > 0);
+                if (filledC < row.Length)
+                {
+                    var attemptD = await ComposeAndRecognizeRowAsync(bmp, row, contents, perGlyphHeight: true, en);
+                    if (attemptD.Count(t => t.Length > 0) > filledC) { attemptC = attemptD; filledC = attemptD.Count(t => t.Length > 0); }
+                }
+                if (filledC > bestFilled) best = attemptC;
+            }
+            result[r] = best;
         }
         return result;
     }
 
     private static async Task<string[]> ComposeAndRecognizeRowAsync(
-        Bitmap bmp, Rectangle[] row, Rectangle?[] contents, bool perGlyphHeight)
+        Bitmap bmp, Rectangle[] row, Rectangle?[] contents, bool perGlyphHeight, OcrEngine? engine = null)
     {
         // Compose at a normalized glyph height with a SMALL gap: neighbors
         // make the engine see every glyph (it may fuse cells into one word,
@@ -172,7 +219,7 @@ public static class OcrService
             }
         }
 
-        var (_, words) = await RecognizeCoreAsync(strip);
+        var (_, words) = await RecognizeCoreAsync(strip, engine);
         var cellText = new string[row.Length];
         Array.Fill(cellText, "");
         foreach (var word in words.OrderBy(w => w.X))
@@ -199,9 +246,10 @@ public static class OcrService
         return cellText.Select(t => t.Trim()).ToArray();
     }
 
-    private static async Task<(List<string> Lines, List<OcrWordBox> Words)> RecognizeCoreAsync(Bitmap bmp)
+    private static async Task<(List<string> Lines, List<OcrWordBox> Words)> RecognizeCoreAsync(
+        Bitmap bmp, OcrEngine? engine = null)
     {
-        var engine = CreateEngine() ?? throw new InvalidOperationException("No OCR language available");
+        engine ??= CreateEngine() ?? throw new InvalidOperationException("No OCR language available");
         var lines = new List<string>();
         var words = new List<OcrWordBox>();
         for (var top = 0; top < bmp.Height; top += SliceHeight - SliceOverlap)

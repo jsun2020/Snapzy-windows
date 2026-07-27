@@ -128,6 +128,28 @@ public class OcrServiceTests
     }
 
     [Fact]
+    public async Task Recognize_ChineseText_UsesChineseCapableEngine()
+    {
+        if (!OcrService.IsAvailable) return;
+        var hasZh = Windows.Media.Ocr.OcrEngine.AvailableRecognizerLanguages
+            .Any(l => l.LanguageTag.StartsWith("zh", StringComparison.OrdinalIgnoreCase));
+        if (!hasZh) return; // nothing to assert without a Chinese OCR pack
+        using var bmp = new Bitmap(560, 90);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.Clear(Color.White);
+            // "che xing yi gong chang" - vehicle type / plant one - plus Latin
+            g.DrawString("车型 一工厂 SORP 2026", new Font("Microsoft YaHei", 22),
+                Brushes.Black, new PointF(15, 20));
+        }
+        var text = await OcrService.RecognizeBitmapAsync(bmp);
+        Assert.Contains("车型", text);      // CJK recognized AND not space-separated
+        Assert.Contains("一工厂", text);
+        Assert.Contains("SORP", text);      // Latin still works with the zh engine
+        Assert.Contains("2026", text);
+    }
+
+    [Fact]
     public void GridDetector_FindsCellsInRuledGrid()
     {
         using var bmp = new Bitmap(400, 200);

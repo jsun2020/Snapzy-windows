@@ -49,8 +49,10 @@ creates `Snapzy.lnk` in your Startup folder (removed when you disable the option
 ## OCR (v1.1)
 
 `Ctrl+Shift+2` selects a region (or window) and copies its text to the clipboard
-using the in-box Windows OCR - no cloud, works offline. Recognition languages
-follow your Windows language packs (English and Chinese both work when installed).
+using the in-box Windows OCR - no cloud, works offline. When the Chinese OCR
+language pack is installed Snapzy uses it for everything (it reads both Chinese
+and Latin/digits; the English engine cannot read Chinese), with an automatic
+English retry for stubborn Latin-only table cells.
 Old screenshots can be OCR'd from the history window's right-click menu.
 
 **Table recognition (v1.2)**: when the image contains a table (spreadsheet
