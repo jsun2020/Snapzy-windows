@@ -24,16 +24,9 @@ public static class AppActions
         Tray?.Balloon("Snapzy", $"Coming soon: {name}");
     }
 
-    public static void CaptureFullscreen() => Stub(nameof(CaptureFullscreen));
-
-    public static void CaptureArea()
-    {
-        var r = Overlay.OverlayWindow.ShowAndSelect();
-        Log.Info(r is null
-            ? "Overlay cancelled"
-            : $"Overlay result: {r.Rect.X},{r.Rect.Y} {r.Rect.Width}x{r.Rect.Height} hwnd={r.Hwnd}");
-    }
-    public static void CaptureAreaAnnotate() => Stub(nameof(CaptureAreaAnnotate));
+    public static void CaptureFullscreen() => CaptureFlow.RunFullscreen(Settings, History);
+    public static void CaptureArea() => CaptureFlow.RunArea(Settings, History, forceAnnotate: false);
+    public static void CaptureAreaAnnotate() => CaptureFlow.RunArea(Settings, History, forceAnnotate: true);
     public static void ToggleRecording() => Stub(nameof(ToggleRecording));
     public static void OpenAnnotate(string? imagePath) => Stub(nameof(OpenAnnotate));
     public static void OpenHistory() => Stub(nameof(OpenHistory));
