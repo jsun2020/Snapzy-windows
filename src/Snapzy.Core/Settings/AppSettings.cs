@@ -36,6 +36,7 @@ public class AppSettings
         Hotkeys = new()
         {
             ["CaptureFullscreen"]   = new() { Gesture = "Ctrl+Shift+3" },
+            ["CaptureOcr"]          = new() { Gesture = "Ctrl+Shift+2" },
             ["CaptureArea"]         = new() { Gesture = "Ctrl+Shift+4" },
             ["CaptureAreaAnnotate"] = new() { Gesture = "Ctrl+Shift+7" },
             ["RecordToggle"]        = new() { Gesture = "Ctrl+Shift+5" },

@@ -324,4 +324,19 @@
   <data name="Toast_ScrollNeedWindow" xml:space="preserve">
     <value>请在遮罩中点击要滚动截图的窗口</value>
   </data>
+  <data name="Toast_OcrCopied" xml:space="preserve">
+    <value>文字已复制到剪贴板</value>
+  </data>
+  <data name="Toast_OcrEmpty" xml:space="preserve">
+    <value>未识别到文字</value>
+  </data>
+  <data name="Toast_OcrUnavailable" xml:space="preserve">
+    <value>未安装 OCR 语言包</value>
+  </data>
+  <data name="Hist_OcrCopy" xml:space="preserve">
+    <value>复制文字 (OCR)</value>
+  </data>
+  <data name="Action_CaptureOcr" xml:space="preserve">
+    <value>OCR 截图（复制文字）</value>
+  </data>
 </root>

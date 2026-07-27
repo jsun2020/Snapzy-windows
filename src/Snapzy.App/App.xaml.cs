@@ -56,6 +56,7 @@ public partial class App : System.Windows.Application
         _hotkeys = new HotkeyManager(new()
         {
             ["CaptureFullscreen"] = AppActions.CaptureFullscreen,
+            ["CaptureOcr"] = AppActions.CaptureOcr,
             ["CaptureArea"] = AppActions.CaptureArea,
             ["CaptureAreaAnnotate"] = AppActions.CaptureAreaAnnotate,
             ["RecordToggle"] = AppActions.ToggleRecording,

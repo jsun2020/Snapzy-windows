@@ -31,6 +31,40 @@ public static class AppActions
     public static void CaptureArea() => CaptureFlow.RunArea(Settings, History, forceAnnotate: false);
     public static void CaptureAreaAnnotate() => CaptureFlow.RunArea(Settings, History, forceAnnotate: true);
 
+    public static async void CaptureOcr()
+    {
+        try
+        {
+            if (!Snapzy.Core.Ocr.OcrService.IsAvailable)
+            {
+                Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrUnavailable"));
+                return;
+            }
+            var sel = Overlay.OverlayWindow.ShowAndSelect();
+            if (sel is null) return;
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
+                () => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            Thread.Sleep(120);
+            using var bmp = sel.Hwnd != IntPtr.Zero
+                ? Snapzy.Core.Capture.ScreenCapture.CaptureWindow(sel.Hwnd)
+                : Snapzy.Core.Capture.ScreenCapture.CaptureRect(sel.Rect);
+            var text = await Snapzy.Core.Ocr.OcrService.RecognizeBitmapAsync(bmp);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrEmpty"));
+                return;
+            }
+            System.Windows.Clipboard.SetText(text);
+            Log.Info($"OCR copied {text.Length} chars");
+            Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrCopied"));
+        }
+        catch (Exception ex)
+        {
+            Log.Error("CaptureOcr failed", ex);
+            Tray?.Balloon("Snapzy", Strings.Get("Toast_CaptureFailed"));
+        }
+    }
+
     public static async void CaptureScrolling()
     {
         try

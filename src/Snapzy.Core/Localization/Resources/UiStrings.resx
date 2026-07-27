@@ -324,4 +324,19 @@
   <data name="Toast_ScrollNeedWindow" xml:space="preserve">
     <value>Click a window in the overlay to scroll-capture it</value>
   </data>
+  <data name="Toast_OcrCopied" xml:space="preserve">
+    <value>Text copied to clipboard</value>
+  </data>
+  <data name="Toast_OcrEmpty" xml:space="preserve">
+    <value>No text found</value>
+  </data>
+  <data name="Toast_OcrUnavailable" xml:space="preserve">
+    <value>No OCR language pack installed</value>
+  </data>
+  <data name="Hist_OcrCopy" xml:space="preserve">
+    <value>Copy text (OCR)</value>
+  </data>
+  <data name="Action_CaptureOcr" xml:space="preserve">
+    <value>OCR capture (copy text)</value>
+  </data>
 </root>

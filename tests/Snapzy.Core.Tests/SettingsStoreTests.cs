@@ -15,7 +15,8 @@ public class SettingsStoreTests : IDisposable
         Assert.Equal(30, s.RecordingFps);
         Assert.Equal("Ctrl+Shift+3", s.Hotkeys["CaptureFullscreen"].Gesture);
         Assert.True(s.Hotkeys["CaptureFullscreen"].Enabled);
-        Assert.Equal(6, s.Hotkeys.Count);
+        Assert.Equal("Ctrl+Shift+2", s.Hotkeys["CaptureOcr"].Gesture);
+        Assert.Equal(7, s.Hotkeys.Count);
     }
 
     [Fact]

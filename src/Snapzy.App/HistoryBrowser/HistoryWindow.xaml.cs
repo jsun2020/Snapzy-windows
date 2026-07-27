@@ -127,6 +127,7 @@ public partial class HistoryWindow : Window
                 CaptureFlow.CopyImageToClipboard(_store.GetFullPath(entry))));
             menu.Items.Add(MakeMenuItem(Strings.Get("QA_Annotate"), () =>
                 AppActions.OpenAnnotate(_store.GetFullPath(entry))));
+            menu.Items.Add(MakeMenuItem(Strings.Get("Hist_OcrCopy"), () => OcrToClipboard(entry)));
         }
         menu.Items.Add(MakeMenuItem(Strings.Get("QA_Open"), () => OpenFile(entry)));
         menu.Items.Add(MakeMenuItem(Strings.Get("QA_Folder"), () =>
@@ -153,6 +154,30 @@ public partial class HistoryWindow : Window
             catch (Exception ex) { Snapzy.Core.Log.Error("History action failed", ex); }
         };
         return item;
+    }
+
+    private async void OcrToClipboard(HistoryEntry entry)
+    {
+        try
+        {
+            if (!Snapzy.Core.Ocr.OcrService.IsAvailable)
+            {
+                AppActions.Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrUnavailable"));
+                return;
+            }
+            var text = await Snapzy.Core.Ocr.OcrService.RecognizeFileAsync(_store.GetFullPath(entry));
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                AppActions.Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrEmpty"));
+                return;
+            }
+            System.Windows.Clipboard.SetText(text);
+            AppActions.Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrCopied"));
+        }
+        catch (Exception ex)
+        {
+            Snapzy.Core.Log.Error("History OCR failed", ex);
+        }
     }
 
     private void OpenFile(HistoryEntry entry) =>
