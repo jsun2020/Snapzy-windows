@@ -33,7 +33,7 @@ pixel/stream-level wherever possible.
 
 ## Regression
 
-- Full unit suite: 51/51 PASS (2 OCR tests assert only when an OCR language is
+- Full unit suite: 49/49 PASS (2 OCR tests assert only when an OCR language is
   installed - it is on this machine, and they ran for real).
 - Published build (v1.1.0, self-contained + ffmpeg): launches portable, fullscreen
   capture via hotkey path verified, state beside exe, no registry keys.
