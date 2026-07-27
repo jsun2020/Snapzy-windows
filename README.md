@@ -60,10 +60,12 @@ lands in its own cell. The history right-click menu offers both modes
 explicitly: **Copy text (OCR)** always copies plain lines, **Copy table (OCR)**
 always copies rows/cells. The `Ctrl+Shift+2` hotkey auto-detects.
 
-Known engine limitation: the in-box Windows OCR cannot see cells that contain
-only a single isolated character (a demo grid of "a b c d" returns no text at
-all - "No text found"); real-world cells with dates, numbers or words work.
-When nothing is recognized the clipboard is left unchanged.
+**Copy table (OCR)** has a dedicated engine for ruled tables (v1.2.2): when the
+image contains drawn cell borders, Snapzy detects the grid lines, crops each
+cell's content and recognizes it cell by cell - this also handles cells with a
+single character, which whole-image Windows OCR cannot see at all. Borderless
+layouts use text-position clustering instead. When nothing is recognized the
+clipboard is left unchanged and a "No text found" balloon is shown.
 
 ## Scrolling capture (v1.1)
 
