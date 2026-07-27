@@ -15,4 +15,10 @@
     <ProjectReference Include="..\Snapzy.Core\Snapzy.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Assets\snapzy.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
