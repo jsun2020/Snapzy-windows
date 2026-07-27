@@ -75,4 +75,52 @@
   <data name="QA_Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
+  <data name="Annotate_Title" xml:space="preserve">
+    <value>Snapzy Annotate</value>
+  </data>
+  <data name="Annotate_UnsavedPrompt" xml:space="preserve">
+    <value>Save changes before closing?</value>
+  </data>
+  <data name="Annotate_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Annotate_SaveAs" xml:space="preserve">
+    <value>Save As...</value>
+  </data>
+  <data name="Annotate_Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Tool_Select" xml:space="preserve">
+    <value>Select</value>
+  </data>
+  <data name="Tool_Rect" xml:space="preserve">
+    <value>Rectangle</value>
+  </data>
+  <data name="Tool_Ellipse" xml:space="preserve">
+    <value>Ellipse</value>
+  </data>
+  <data name="Tool_Line" xml:space="preserve">
+    <value>Line</value>
+  </data>
+  <data name="Tool_Arrow" xml:space="preserve">
+    <value>Arrow</value>
+  </data>
+  <data name="Tool_Freehand" xml:space="preserve">
+    <value>Pen</value>
+  </data>
+  <data name="Tool_Text" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="Tool_Blur" xml:space="preserve">
+    <value>Blur</value>
+  </data>
+  <data name="Tool_Pixelate" xml:space="preserve">
+    <value>Pixelate</value>
+  </data>
+  <data name="Tool_Counter" xml:space="preserve">
+    <value>Counter</value>
+  </data>
+  <data name="Tool_Crop" xml:space="preserve">
+    <value>Crop</value>
+  </data>
 </root>

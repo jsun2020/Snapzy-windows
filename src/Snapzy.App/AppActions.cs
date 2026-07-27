@@ -28,7 +28,21 @@ public static class AppActions
     public static void CaptureArea() => CaptureFlow.RunArea(Settings, History, forceAnnotate: false);
     public static void CaptureAreaAnnotate() => CaptureFlow.RunArea(Settings, History, forceAnnotate: true);
     public static void ToggleRecording() => Stub(nameof(ToggleRecording));
-    public static void OpenAnnotate(string? imagePath) => Stub(nameof(OpenAnnotate));
+
+    public static void OpenAnnotate(string? imagePath)
+    {
+        if (imagePath is null)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Images|*.png;*.jpg;*.jpeg",
+                InitialDirectory = AppPaths.CapturesDir,
+            };
+            if (dlg.ShowDialog() != true) return;
+            imagePath = dlg.FileName;
+        }
+        Annotate.AnnotateWindow.Open(imagePath, null, History);
+    }
     public static void OpenHistory() => Stub(nameof(OpenHistory));
     public static void OpenSettings() => Stub(nameof(OpenSettings));
 
