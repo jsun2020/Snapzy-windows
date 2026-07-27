@@ -162,4 +162,154 @@
   <data name="Hist_DeleteConfirm" xml:space="preserve">
     <value>Delete {0}?</value>
   </data>
+  <data name="Set_Title" xml:space="preserve">
+    <value>Snapzy Settings</value>
+  </data>
+  <data name="Set_TabGeneral" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Set_TabCapture" xml:space="preserve">
+    <value>Capture</value>
+  </data>
+  <data name="Set_TabRecording" xml:space="preserve">
+    <value>Recording</value>
+  </data>
+  <data name="Set_TabHotkeys" xml:space="preserve">
+    <value>Hotkeys</value>
+  </data>
+  <data name="Set_TabHistory" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="Set_TabAbout" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Set_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Set_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Set_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Set_Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Set_ThemeLight" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Set_ThemeDark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Set_ThemeSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Set_ThemeNote" xml:space="preserve">
+    <value>Applies to Snapzy windows only</value>
+  </data>
+  <data name="Set_LaunchAtLogin" xml:space="preserve">
+    <value>Launch Snapzy at login (Startup folder shortcut)</value>
+  </data>
+  <data name="Set_TrayLeftClick" xml:space="preserve">
+    <value>Left-click on tray icon captures an area</value>
+  </data>
+  <data name="Set_ImageFormat" xml:space="preserve">
+    <value>Image format</value>
+  </data>
+  <data name="Set_FullscreenMode" xml:space="preserve">
+    <value>Fullscreen capture</value>
+  </data>
+  <data name="Set_FsCurrentMonitor" xml:space="preserve">
+    <value>Current monitor</value>
+  </data>
+  <data name="Set_FsAllMonitors" xml:space="preserve">
+    <value>All monitors</value>
+  </data>
+  <data name="Set_ScreenshotActions" xml:space="preserve">
+    <value>After a screenshot</value>
+  </data>
+  <data name="Set_CopyToClipboard" xml:space="preserve">
+    <value>Copy to clipboard</value>
+  </data>
+  <data name="Set_ShowQuickAccess" xml:space="preserve">
+    <value>Show Quick Access panel</value>
+  </data>
+  <data name="Set_OpenAnnotate" xml:space="preserve">
+    <value>Open in annotation editor</value>
+  </data>
+  <data name="Set_RecordingActions" xml:space="preserve">
+    <value>After a recording</value>
+  </data>
+  <data name="Set_QaTimeout" xml:space="preserve">
+    <value>Quick Access timeout</value>
+  </data>
+  <data name="Set_Fps" xml:space="preserve">
+    <value>Frame rate</value>
+  </data>
+  <data name="Set_Output" xml:space="preserve">
+    <value>Output format</value>
+  </data>
+  <data name="Set_RecordCursor" xml:space="preserve">
+    <value>Include mouse cursor</value>
+  </data>
+  <data name="Set_MicDevice" xml:space="preserve">
+    <value>Microphone</value>
+  </data>
+  <data name="Set_MicNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Set_Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Set_RestoreDefaults" xml:space="preserve">
+    <value>Restore Defaults</value>
+  </data>
+  <data name="Set_HotkeyConflict" xml:space="preserve">
+    <value>This hotkey conflicts with another action</value>
+  </data>
+  <data name="Set_Retention" xml:space="preserve">
+    <value>Keep captures</value>
+  </data>
+  <data name="Set_RetForever" xml:space="preserve">
+    <value>Forever</value>
+  </data>
+  <data name="Set_Ret7" xml:space="preserve">
+    <value>7 days</value>
+  </data>
+  <data name="Set_Ret30" xml:space="preserve">
+    <value>30 days</value>
+  </data>
+  <data name="Set_Ret90" xml:space="preserve">
+    <value>90 days</value>
+  </data>
+  <data name="Set_OpenCaptures" xml:space="preserve">
+    <value>Open captures folder</value>
+  </data>
+  <data name="Set_DiskUsage" xml:space="preserve">
+    <value>Disk usage</value>
+  </data>
+  <data name="Set_Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Set_OpenLogs" xml:space="preserve">
+    <value>Open logs</value>
+  </data>
+  <data name="Action_CaptureFullscreen" xml:space="preserve">
+    <value>Fullscreen screenshot</value>
+  </data>
+  <data name="Action_CaptureArea" xml:space="preserve">
+    <value>Area / window screenshot</value>
+  </data>
+  <data name="Action_CaptureAreaAnnotate" xml:space="preserve">
+    <value>Area screenshot + annotate</value>
+  </data>
+  <data name="Action_RecordToggle" xml:space="preserve">
+    <value>Record start / stop</value>
+  </data>
+  <data name="Action_OpenAnnotate" xml:space="preserve">
+    <value>Open annotation editor</value>
+  </data>
+  <data name="Action_OpenHistory" xml:space="preserve">
+    <value>Open capture history</value>
+  </data>
 </root>

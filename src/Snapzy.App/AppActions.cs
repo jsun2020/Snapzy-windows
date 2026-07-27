@@ -137,7 +137,13 @@ public static class AppActions
         Annotate.AnnotateWindow.Open(imagePath, null, History);
     }
     public static void OpenHistory() => HistoryBrowser.HistoryWindow.Open(History, Settings);
-    public static void OpenSettings() => Stub(nameof(OpenSettings));
+    public static void OpenSettings() => SettingsUI.SettingsWindow.Open(Settings, () =>
+    {
+        var failed = Hotkeys?.Reregister(Settings.Hotkeys) ?? new List<string>();
+        if (failed.Count > 0)
+            Tray?.Balloon("Snapzy", Strings.Get("Toast_HotkeyConflict") + ": " + string.Join(", ", failed));
+        Tray?.RebuildMenu();
+    });
 
     public static void Quit()
     {

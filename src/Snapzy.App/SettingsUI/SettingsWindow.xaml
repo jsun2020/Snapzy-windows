@@ -1,0 +1,87 @@
+<Window x:Class="Snapzy.App.SettingsUI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="560" Height="520"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel Margin="10">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="BtnSave" Click="OnSave" Padding="16,5" Margin="0,0,8,0" />
+            <Button x:Name="BtnCancel" Click="OnCancel" Padding="16,5" />
+        </StackPanel>
+        <TabControl x:Name="Tabs">
+            <TabItem x:Name="TabGeneral">
+                <StackPanel Margin="12">
+                    <TextBlock x:Name="LblLanguage" Margin="0,0,0,4" />
+                    <ComboBox x:Name="LanguageCombo" Width="200" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="LblTheme" Margin="0,14,0,4" />
+                    <ComboBox x:Name="ThemeCombo" Width="200" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="LblThemeNote" FontSize="11" Foreground="Gray" Margin="0,4,0,0" />
+                    <CheckBox x:Name="ChkLaunchAtLogin" Margin="0,18,0,0" />
+                    <CheckBox x:Name="ChkTrayLeftClick" Margin="0,8,0,0" />
+                </StackPanel>
+            </TabItem>
+            <TabItem x:Name="TabCapture">
+                <StackPanel Margin="12">
+                    <TextBlock x:Name="LblFormat" Margin="0,0,0,4" />
+                    <ComboBox x:Name="FormatCombo" Width="200" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="LblFsMode" Margin="0,14,0,4" />
+                    <ComboBox x:Name="FsModeCombo" Width="200" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="LblShotActions" Margin="0,16,0,4" FontWeight="SemiBold" />
+                    <CheckBox x:Name="ChkShotClipboard" Margin="0,2,0,0" />
+                    <CheckBox x:Name="ChkShotQa" Margin="0,6,0,0" />
+                    <CheckBox x:Name="ChkShotAnnotate" Margin="0,6,0,0" />
+                    <TextBlock x:Name="LblRecActions" Margin="0,14,0,4" FontWeight="SemiBold" />
+                    <CheckBox x:Name="ChkRecQa" Margin="0,2,0,0" />
+                    <DockPanel Margin="0,16,0,0">
+                        <TextBlock x:Name="LblQaTimeout" DockPanel.Dock="Left" VerticalAlignment="Center" />
+                        <TextBlock x:Name="LblQaTimeoutValue" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        <Slider x:Name="QaTimeoutSlider" Minimum="3" Maximum="30" TickFrequency="1"
+                                IsSnapToTickEnabled="True" Margin="10,0" ValueChanged="OnQaTimeoutChanged" />
+                    </DockPanel>
+                </StackPanel>
+            </TabItem>
+            <TabItem x:Name="TabRecording">
+                <StackPanel Margin="12">
+                    <TextBlock x:Name="LblFps" Margin="0,0,0,4" />
+                    <ComboBox x:Name="FpsCombo" Width="200" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="LblOutput" Margin="0,14,0,4" />
+                    <ComboBox x:Name="OutputCombo" Width="200" HorizontalAlignment="Left" />
+                    <CheckBox x:Name="ChkCursor" Margin="0,16,0,0" />
+                    <TextBlock x:Name="LblMic" Margin="0,16,0,4" />
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox x:Name="MicCombo" Width="280" />
+                        <Button x:Name="BtnRefreshMics" Click="OnRefreshMics" Padding="10,2" Margin="8,0,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+            <TabItem x:Name="TabHotkeys">
+                <DockPanel Margin="12">
+                    <Button x:Name="BtnRestoreDefaults" DockPanel.Dock="Bottom" Click="OnRestoreDefaults"
+                            HorizontalAlignment="Left" Padding="10,4" Margin="0,10,0,0" />
+                    <StackPanel x:Name="HotkeyRows" />
+                </DockPanel>
+            </TabItem>
+            <TabItem x:Name="TabHistory">
+                <StackPanel Margin="12">
+                    <TextBlock x:Name="LblRetention" Margin="0,0,0,4" />
+                    <ComboBox x:Name="RetentionCombo" Width="200" HorizontalAlignment="Left" />
+                    <Button x:Name="BtnOpenCaptures" Click="OnOpenCaptures" HorizontalAlignment="Left"
+                            Padding="10,4" Margin="0,18,0,0" />
+                    <TextBlock x:Name="LblDiskUsage" Margin="0,12,0,0" Foreground="Gray" />
+                </StackPanel>
+            </TabItem>
+            <TabItem x:Name="TabAbout">
+                <StackPanel Margin="12">
+                    <TextBlock Text="Snapzy for Windows" FontSize="18" FontWeight="Bold" />
+                    <TextBlock x:Name="LblVersion" Margin="0,6,0,0" />
+                    <TextBlock Margin="0,10,0,0">
+                        <Hyperlink x:Name="RepoLink" RequestNavigate="OnRepoLink" NavigateUri="https://github.com/inject-cell/Snapzy">github.com/inject-cell/Snapzy</Hyperlink>
+                    </TextBlock>
+                    <Button x:Name="BtnOpenLogs" Click="OnOpenLogs" HorizontalAlignment="Left"
+                            Padding="10,4" Margin="0,16,0,0" />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>
