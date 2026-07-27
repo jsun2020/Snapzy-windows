@@ -16,6 +16,9 @@ using Path = System.Windows.Shapes.Path;
 using Popup = System.Windows.Controls.Primitives.Popup;
 using Cursors = System.Windows.Input.Cursors;
 using Button = System.Windows.Controls.Button;
+using Image = System.Windows.Controls.Image;
+using TextBox = System.Windows.Controls.TextBox;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace Snapzy.App.Annotate;
 
@@ -74,6 +77,10 @@ public partial class AnnotateWindow : Window
         _entry = entry;
         _store = store;
 
+        // Keep single-letter tool shortcuts working when a CJK IME is active;
+        // text boxes re-enable the IME so CJK annotation text still works.
+        InputMethod.SetIsInputMethodEnabled(this, false);
+
         LoadImage();
         BuildToolbar();
         WireEvents();
@@ -103,6 +110,9 @@ public partial class AnnotateWindow : Window
         img.EndInit();
         img.Freeze();
         BaseImage.Source = img;
+        // Exact 1:1 pixel reproduction in the export (no resampling drift).
+        RenderOptions.SetBitmapScalingMode(BaseImage, BitmapScalingMode.NearestNeighbor);
+        BaseImage.SnapsToDevicePixels = true;
         _imgW = img.PixelWidth;
         _imgH = img.PixelHeight;
         // 1 canvas unit == 1 source pixel (96dpi render target).
@@ -123,7 +133,6 @@ public partial class AnnotateWindow : Window
                 Content = Strings.Get("Tool_" + tool),
                 ToolTip = Strings.Get("Tool_" + tool),
                 Tag = tool,
-                IsEnabled = tool is Tool.Select or Tool.Rect or Tool.Ellipse or Tool.Line or Tool.Arrow or Tool.Freehand,
             };
             btn.Click += (_, _) => SelectTool(tool);
             _toolButtons[tool] = btn;
@@ -184,6 +193,32 @@ public partial class AnnotateWindow : Window
         if (_tool == Tool.Select)
         {
             StartSelectOrMove(p, e);
+            return;
+        }
+        CancelPendingCrop();
+        if (_tool == Tool.Text)
+        {
+            BeginTextEntry(p);
+            return;
+        }
+        if (_tool == Tool.Counter)
+        {
+            AddCounterBadge(p);
+            return;
+        }
+        if (_tool is Tool.Blur or Tool.Pixelate or Tool.Crop)
+        {
+            _drawing = true;
+            _drawStart = p;
+            Anno.CaptureMouse();
+            _activeShape = new Rectangle
+            {
+                Stroke = new SolidColorBrush(Color.FromRgb(0x2E, 0x90, 0xFA)),
+                StrokeThickness = 1,
+                StrokeDashArray = new DoubleCollection { 4, 3 },
+                Fill = new SolidColorBrush(Color.FromArgb(0x20, 0x2E, 0x90, 0xFA)),
+            };
+            Anno.Children.Add(_activeShape);
             return;
         }
         if (_tool is not (Tool.Rect or Tool.Ellipse or Tool.Line or Tool.Arrow or Tool.Freehand)) return;
@@ -307,8 +342,18 @@ public partial class AnnotateWindow : Window
         _activeShape = null;
         _activePolyline = null;
 
-        // Discard degenerate shapes (simple click without drag)
         var p = e.GetPosition(Anno);
+        if (_tool is Tool.Blur or Tool.Pixelate or Tool.Crop)
+        {
+            Anno.Children.Remove(shape);
+            var region = NormalizedRegion(_drawStart, p);
+            if (region.Width < 4 || region.Height < 4) return;
+            if (_tool == Tool.Crop) ShowCropConfirm(region);
+            else AddRegionEffect(region, pixelate: _tool == Tool.Pixelate);
+            return;
+        }
+
+        // Discard degenerate shapes (simple click without drag)
         var moved = Math.Abs(p.X - _drawStart.X) > 2 || Math.Abs(p.Y - _drawStart.Y) > 2;
         if (!moved && shape is not Polyline)
         {
@@ -318,6 +363,15 @@ public partial class AnnotateWindow : Window
         RememberToolStyle();
         _undo.Push(new AddElementAction(this, shape));
         MarkDirty();
+    }
+
+    private Int32Rect NormalizedRegion(WpfPoint a, WpfPoint b)
+    {
+        var x = (int)Math.Max(0, Math.Min(a.X, b.X));
+        var y = (int)Math.Max(0, Math.Min(a.Y, b.Y));
+        var w = (int)Math.Min(_imgW - x, Math.Abs(b.X - a.X));
+        var h = (int)Math.Min(_imgH - y, Math.Abs(b.Y - a.Y));
+        return new Int32Rect(x, y, Math.Max(0, w), Math.Max(0, h));
     }
 
     // ---------- selection ----------
@@ -472,11 +526,35 @@ public partial class AnnotateWindow : Window
 
     // ---------- keyboard ----------
 
+    private static readonly Dictionary<Key, Tool> ToolShortcuts = new()
+    {
+        [Key.V] = Tool.Select,
+        [Key.R] = Tool.Rect,
+        [Key.O] = Tool.Ellipse,
+        [Key.L] = Tool.Line,
+        [Key.A] = Tool.Arrow,
+        [Key.P] = Tool.Freehand,
+        [Key.T] = Tool.Text,
+        [Key.B] = Tool.Blur,
+        [Key.X] = Tool.Pixelate,
+        [Key.N] = Tool.Counter,
+        [Key.C] = Tool.Crop,
+    };
+
     private void OnPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         var shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        // While typing in a text annotation, only Ctrl+S passes through (it
+        // commits the text via the focus change and saves).
+        if (e.OriginalSource is TextBox && !(ctrl && e.Key == Key.S)) return;
         if (e.Key == Key.Space) { _spaceDown = true; Scroll.Cursor = Cursors.Hand; return; }
+        if (!ctrl && !shift && ToolShortcuts.TryGetValue(e.Key, out var tool))
+        {
+            SelectTool(tool);
+            e.Handled = true;
+            return;
+        }
         if (ctrl && e.Key == Key.Z) { OnUndo(this, null!); e.Handled = true; }
         else if (ctrl && e.Key == Key.Y) { OnRedo(this, null!); e.Handled = true; }
         else if (ctrl && shift && e.Key == Key.S) { OnSaveAs(this, null!); e.Handled = true; }
@@ -489,7 +567,15 @@ public partial class AnnotateWindow : Window
             var index = Anno.Children.IndexOf(el);
             ClearSelection();
             Anno.Children.Remove(el);
-            _undo.Push(new RemoveElementAction(this, el, index));
+            if (el is Grid g && (string?)g.Tag == "counter")
+            {
+                RenumberBadges();
+                _undo.Push(new RemoveCounterAction(this, el, index));
+            }
+            else
+            {
+                _undo.Push(new RemoveElementAction(this, el, index));
+            }
             MarkDirty();
             e.Handled = true;
         }
@@ -547,10 +633,270 @@ public partial class AnnotateWindow : Window
         BtnRedo.IsEnabled = _undo.CanRedo;
     }
 
+    // ---------- text ----------
+
+    private void BeginTextEntry(WpfPoint p) => ShowTextBox(p.X, p.Y, null);
+
+    private void ShowTextBox(double x, double y, TextBlock? editing)
+    {
+        if (editing is not null) editing.Visibility = Visibility.Hidden;
+        var box = new TextBox
+        {
+            Background = new SolidColorBrush(Color.FromArgb(0x30, 0, 0, 0)),
+            Foreground = new SolidColorBrush(editing?.Foreground is SolidColorBrush sb ? sb.Color : _color),
+            FontSize = editing?.FontSize ?? Math.Max(14, _strokeWidth * 6),
+            FontWeight = FontWeights.SemiBold,
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0x2E, 0x90, 0xFA)),
+            BorderThickness = new Thickness(1),
+            MinWidth = 40,
+            Text = editing?.Text ?? "",
+        };
+        InputMethod.SetIsInputMethodEnabled(box, true);
+        Canvas.SetLeft(box, x);
+        Canvas.SetTop(box, y);
+        Anno.Children.Add(box);
+        box.Loaded += (_, _) => { box.Focus(); box.CaretIndex = box.Text.Length; };
+
+        var done = false;
+        void Commit()
+        {
+            if (done) return;
+            done = true;
+            Anno.Children.Remove(box);
+            var text = box.Text.Trim();
+            if (editing is not null)
+            {
+                editing.Visibility = Visibility.Visible;
+                if (text.Length > 0 && text != editing.Text)
+                {
+                    _undo.Push(new EditTextAction(this, editing, editing.Text, text));
+                    editing.Text = text;
+                    MarkDirty();
+                }
+                return;
+            }
+            if (text.Length == 0) return;
+            var tb = MakeTextBlock(text, box.FontSize, ((SolidColorBrush)box.Foreground).Color);
+            Canvas.SetLeft(tb, x);
+            Canvas.SetTop(tb, y);
+            Anno.Children.Add(tb);
+            RememberToolStyle();
+            _undo.Push(new AddElementAction(this, tb));
+            MarkDirty();
+        }
+
+        box.LostFocus += (_, _) => Commit();
+        box.PreviewKeyDown += (_, ke) =>
+        {
+            if (ke.Key == Key.Enter) { Commit(); ke.Handled = true; }
+            else if (ke.Key == Key.Escape)
+            {
+                done = true;
+                Anno.Children.Remove(box);
+                if (editing is not null) editing.Visibility = Visibility.Visible;
+                ke.Handled = true;
+            }
+        };
+    }
+
+    private TextBlock MakeTextBlock(string text, double fontSize, Color color)
+    {
+        var tb = new TextBlock
+        {
+            Text = text,
+            FontSize = fontSize,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(color),
+        };
+        tb.MouseLeftButtonDown += (_, me) =>
+        {
+            if (me.ClickCount != 2) return;
+            var t = GetTranslate(tb);
+            ShowTextBox(Canvas.GetLeft(tb) + t.X, Canvas.GetTop(tb) + t.Y, tb);
+            me.Handled = true;
+        };
+        return tb;
+    }
+
+    internal class EditTextAction : IUndoable
+    {
+        private readonly AnnotateWindow _w;
+        private readonly TextBlock _tb;
+        private readonly string _old, _new;
+        public EditTextAction(AnnotateWindow w, TextBlock tb, string oldText, string newText)
+        { _w = w; _tb = tb; _old = oldText; _new = newText; }
+        public void Undo() { _tb.Text = _old; _w.MarkDirty(); }
+        public void Redo() { _tb.Text = _new; _w.MarkDirty(); }
+    }
+
+    // ---------- counter ----------
+
+    private void AddCounterBadge(WpfPoint p)
+    {
+        var n = CounterBadges().Count + 1;
+        var d = 14 + _strokeWidth * 4;
+        var badge = new Grid { Width = d, Height = d, Tag = "counter" };
+        badge.Children.Add(new Ellipse
+        {
+            Fill = new SolidColorBrush(_color),
+            Stroke = Brushes.White,
+            StrokeThickness = 1.5,
+        });
+        badge.Children.Add(new TextBlock
+        {
+            Text = n.ToString(),
+            Foreground = Brushes.White,
+            FontWeight = FontWeights.Bold,
+            FontSize = d * 0.5,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        Canvas.SetLeft(badge, p.X - d / 2);
+        Canvas.SetTop(badge, p.Y - d / 2);
+        Anno.Children.Add(badge);
+        RememberToolStyle();
+        _undo.Push(new AddCounterAction(this, badge));
+        MarkDirty();
+    }
+
+    private List<Grid> CounterBadges() =>
+        Anno.Children.OfType<Grid>().Where(g => (string?)g.Tag == "counter").ToList();
+
+    internal void RenumberBadges()
+    {
+        var i = 1;
+        foreach (var g in CounterBadges())
+            ((TextBlock)g.Children[1]).Text = (i++).ToString();
+    }
+
+    internal class AddCounterAction : IUndoable
+    {
+        private readonly AnnotateWindow _w;
+        private readonly UIElement _el;
+        public AddCounterAction(AnnotateWindow w, UIElement el) { _w = w; _el = el; }
+        public void Undo() { _w.ClearSelection(); _w.Anno.Children.Remove(_el); _w.RenumberBadges(); _w.MarkDirty(); }
+        public void Redo() { _w.Anno.Children.Add(_el); _w.RenumberBadges(); _w.MarkDirty(); }
+    }
+
+    internal class RemoveCounterAction : IUndoable
+    {
+        private readonly AnnotateWindow _w;
+        private readonly UIElement _el;
+        private readonly int _index;
+        public RemoveCounterAction(AnnotateWindow w, UIElement el, int index) { _w = w; _el = el; _index = index; }
+        public void Undo()
+        {
+            _w.Anno.Children.Insert(Math.Min(_index, _w.Anno.Children.Count), _el);
+            _w.RenumberBadges();
+            _w.MarkDirty();
+        }
+        public void Redo() { _w.ClearSelection(); _w.Anno.Children.Remove(_el); _w.RenumberBadges(); _w.MarkDirty(); }
+    }
+
+    // ---------- blur / pixelate ----------
+
+    private void AddRegionEffect(Int32Rect region, bool pixelate)
+    {
+        var src = (BitmapSource)BaseImage.Source;
+        var crop = new CroppedBitmap(src, region);
+        var img = new Image { Stretch = Stretch.Fill, Width = region.Width, Height = region.Height };
+        if (pixelate)
+        {
+            const double factor = 12.0;
+            img.Source = new TransformedBitmap(crop, new ScaleTransform(1 / factor, 1 / factor));
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.NearestNeighbor);
+        }
+        else
+        {
+            img.Source = crop;
+            img.Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 14 };
+        }
+        var host = new Border
+        {
+            Width = region.Width,
+            Height = region.Height,
+            ClipToBounds = true,
+            Child = img,
+        };
+        Canvas.SetLeft(host, region.X);
+        Canvas.SetTop(host, region.Y);
+        Anno.Children.Add(host);
+        _undo.Push(new AddElementAction(this, host));
+        MarkDirty();
+    }
+
+    // ---------- crop ----------
+
+    private Int32Rect? _cropRect;
+    private readonly List<UIElement> _pendingCropUi = new();
+
+    private void ShowCropConfirm(Int32Rect region)
+    {
+        CancelPendingCrop();
+        var marquee = new Rectangle
+        {
+            Stroke = new SolidColorBrush(Color.FromRgb(0x2E, 0x90, 0xFA)),
+            StrokeThickness = 1,
+            StrokeDashArray = new DoubleCollection { 4, 3 },
+            Width = region.Width,
+            Height = region.Height,
+            IsHitTestVisible = false,
+        };
+        Canvas.SetLeft(marquee, region.X);
+        Canvas.SetTop(marquee, region.Y);
+
+        var apply = new Button { Content = Strings.Get("Crop_Apply"), Padding = new Thickness(8, 2, 8, 2) };
+        var cancel = new Button { Content = Strings.Get("Crop_Cancel"), Padding = new Thickness(8, 2, 8, 2) };
+        var bar = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+        bar.Children.Add(apply);
+        bar.Children.Add(cancel);
+        Canvas.SetLeft(bar, Math.Max(0, Math.Min(_imgW - 140, region.X + region.Width - 140)));
+        Canvas.SetTop(bar, Math.Min(_imgH - 28, region.Y + region.Height + 6));
+
+        apply.Click += (_, _) =>
+        {
+            var old = _cropRect;
+            CancelPendingCrop();
+            _undo.Push(new CropAction(this, old, region));
+            SetCrop(region);
+            MarkDirty();
+        };
+        cancel.Click += (_, _) => CancelPendingCrop();
+
+        _pendingCropUi.Add(marquee);
+        _pendingCropUi.Add(bar);
+        Anno.Children.Add(marquee);
+        Anno.Children.Add(bar);
+    }
+
+    private void CancelPendingCrop()
+    {
+        foreach (var el in _pendingCropUi) Anno.Children.Remove(el);
+        _pendingCropUi.Clear();
+    }
+
+    internal void SetCrop(Int32Rect? rect)
+    {
+        _cropRect = rect;
+        CanvasRoot.Clip = rect is { } r
+            ? new RectangleGeometry(new Rect(r.X, r.Y, r.Width, r.Height))
+            : null;
+    }
+
+    internal class CropAction : IUndoable
+    {
+        private readonly AnnotateWindow _w;
+        private readonly Int32Rect? _old, _new;
+        public CropAction(AnnotateWindow w, Int32Rect? oldRect, Int32Rect? newRect) { _w = w; _old = oldRect; _new = newRect; }
+        public void Undo() { _w.SetCrop(_old); _w.MarkDirty(); }
+        public void Redo() { _w.SetCrop(_new); _w.MarkDirty(); }
+    }
+
     // ---------- export ----------
 
     internal BitmapSource RenderComposite()
     {
+        CancelPendingCrop();
         ClearSelection();
         var oldScale = ZoomTransform.ScaleX;
         ZoomTransform.ScaleX = 1;
@@ -564,17 +910,19 @@ public partial class AnnotateWindow : Window
         return ApplyExportCrop(rtb);
     }
 
-    // Crop hook used by the crop tool (added in the follow-up task).
-    protected virtual BitmapSource ApplyExportCrop(BitmapSource source) => source;
+    private BitmapSource ApplyExportCrop(BitmapSource source) =>
+        _cropRect is { } r && r.Width > 0 && r.Height > 0 ? new CroppedBitmap(source, r) : source;
 
     private void OnCopy(object sender, RoutedEventArgs e)
     {
+        Focus(); // commits any pending text annotation via LostFocus
         System.Windows.Clipboard.SetImage(RenderComposite());
         AppActions.Tray?.Balloon("Snapzy", Strings.Get("Toast_CopiedToClipboard"));
     }
 
     private void OnSave(object sender, RoutedEventArgs e)
     {
+        Focus(); // commits any pending text annotation via LostFocus
         SaveTo(_imagePath);
         _dirty = false;
         UpdateTitle();

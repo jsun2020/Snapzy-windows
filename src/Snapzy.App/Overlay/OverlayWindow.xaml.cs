@@ -37,6 +37,8 @@ public partial class OverlayWindow : Window
     private OverlayWindow(bool startInWindowMode)
     {
         InitializeComponent();
+        // A CJK IME would otherwise eat the plain-letter shortcuts (A).
+        InputMethod.SetIsInputMethodEnabled(this, false);
         _windowMode = startInWindowMode;
         _virtualScreen = System.Windows.Forms.SystemInformation.VirtualScreen;
         _windows = WindowEnumerator.GetTopLevelWindows();

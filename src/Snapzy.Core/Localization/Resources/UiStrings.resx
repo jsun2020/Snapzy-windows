@@ -123,4 +123,10 @@
   <data name="Tool_Crop" xml:space="preserve">
     <value>Crop</value>
   </data>
+  <data name="Crop_Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="Crop_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
 </root>

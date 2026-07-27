@@ -8,6 +8,10 @@ public static class ImageSaver
 {
     public static void Save(Bitmap bmp, string path, string format, string ffmpegExe)
     {
+        // Screen captures inherit the display DPI (e.g. 144 at 150 percent scaling);
+        // normalize to 96 so 1 pixel == 1 DIP for every downstream consumer
+        // (annotation editor, clipboard) and no resampling ever happens.
+        bmp.SetResolution(96f, 96f);
         switch (format)
         {
             case "jpg":
