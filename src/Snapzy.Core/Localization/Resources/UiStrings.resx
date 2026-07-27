@@ -57,4 +57,7 @@
   <data name="FirstRun_Welcome" xml:space="preserve">
     <value>Snapzy is running in the tray. Ctrl+Shift+4 captures an area.</value>
   </data>
+  <data name="Overlay_Hints" xml:space="preserve">
+    <value>Drag to select - A: window mode - Enter: confirm - Esc: cancel</value>
+  </data>
 </root>

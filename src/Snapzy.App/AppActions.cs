@@ -25,7 +25,14 @@ public static class AppActions
     }
 
     public static void CaptureFullscreen() => Stub(nameof(CaptureFullscreen));
-    public static void CaptureArea() => Stub(nameof(CaptureArea));
+
+    public static void CaptureArea()
+    {
+        var r = Overlay.OverlayWindow.ShowAndSelect();
+        Log.Info(r is null
+            ? "Overlay cancelled"
+            : $"Overlay result: {r.Rect.X},{r.Rect.Y} {r.Rect.Width}x{r.Rect.Height} hwnd={r.Hwnd}");
+    }
     public static void CaptureAreaAnnotate() => Stub(nameof(CaptureAreaAnnotate));
     public static void ToggleRecording() => Stub(nameof(ToggleRecording));
     public static void OpenAnnotate(string? imagePath) => Stub(nameof(OpenAnnotate));

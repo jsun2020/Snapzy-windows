@@ -1,0 +1,28 @@
+<Window x:Class="Snapzy.App.Overlay.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="#01000000"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        Cursor="Cross"
+        Focusable="True"
+        ShowActivated="True">
+    <Canvas x:Name="Root">
+        <Rectangle x:Name="DimTop" Fill="#66000000" />
+        <Rectangle x:Name="DimBottom" Fill="#66000000" />
+        <Rectangle x:Name="DimLeft" Fill="#66000000" />
+        <Rectangle x:Name="DimRight" Fill="#66000000" />
+        <Rectangle x:Name="SelBorder" Stroke="#FF2E90FA" StrokeThickness="1" Fill="Transparent" Visibility="Collapsed" />
+        <Canvas x:Name="Handles" Visibility="Collapsed" />
+        <Border x:Name="Hud" Background="#CC202020" CornerRadius="4" Padding="8,4" Visibility="Collapsed">
+            <TextBlock x:Name="HudText" Foreground="White" FontSize="12" FontFamily="Consolas" />
+        </Border>
+        <Border x:Name="HintsBar" Background="#CC202020" CornerRadius="4" Padding="12,6">
+            <TextBlock x:Name="HintsText" Foreground="#DDFFFFFF" FontSize="12" />
+        </Border>
+    </Canvas>
+</Window>

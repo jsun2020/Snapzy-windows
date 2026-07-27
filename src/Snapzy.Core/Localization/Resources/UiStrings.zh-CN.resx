@@ -57,4 +57,7 @@
   <data name="FirstRun_Welcome" xml:space="preserve">
     <value>Snapzy 已在托盘运行。Ctrl+Shift+4 区域截图。</value>
   </data>
+  <data name="Overlay_Hints" xml:space="preserve">
+    <value>拖动选择区域 - A：窗口模式 - Enter：确认 - Esc：取消</value>
+  </data>
 </root>
