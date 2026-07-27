@@ -8,6 +8,7 @@ public class RecordingResult
 {
     public string? Mp4Path { get; set; }
     public string? GifPath { get; set; }
+    public string? WebpPath { get; set; }
     public string? Error { get; set; }
 }
 
@@ -23,6 +24,7 @@ public class RecordingController
     private string _stderrLog = "";
     private readonly List<string> _segments = new();
     private IFfmpegProcess? _current;
+    private readonly ISystemAudioRecorder? _audio;
 
     public RecordingState State { get; private set; } = RecordingState.Idle;
     public TimeSpan FastFailDelay { get; set; } = TimeSpan.FromSeconds(2);
@@ -30,10 +32,12 @@ public class RecordingController
     public TimeSpan EncodeTimeout { get; set; } = TimeSpan.FromMinutes(10);
     public event Action<string>? OnError;
 
-    public RecordingController(string ffmpegExe, string workDir, Func<ProcessStartInfo, IFfmpegProcess>? processFactory = null)
+    public RecordingController(string ffmpegExe, string workDir,
+        Func<ProcessStartInfo, IFfmpegProcess>? processFactory = null, ISystemAudioRecorder? audio = null)
     {
         _ffmpegExe = ffmpegExe;
         _workDir = workDir;
+        _audio = audio;
         _stderrLog = Path.Combine(Log.FilePath is null ? workDir : Path.GetDirectoryName(Log.FilePath)!,
             $"ffmpeg-{DateTime.Now:yyyyMMdd-HHmmss}.log");
         _factory = processFactory ?? (psi => new FfmpegProcess(psi, _stderrLog));
@@ -86,6 +90,8 @@ public class RecordingController
             return false;
         }
         _segments.Add(seg);
+        try { _audio?.StartSegment(Path.ChangeExtension(seg, ".wav")); }
+        catch (Exception ex) { Log.Error("system audio start failed", ex); }
         return true;
     }
 
@@ -116,9 +122,12 @@ public class RecordingController
         _current.WriteQuit();
         await _current.WaitForExitAsync(QuitTimeout);
         _current = null;
+        try { _audio?.StopSegment(); }
+        catch (Exception ex) { Log.Error("system audio stop failed", ex); }
     }
 
-    public async Task<RecordingResult> StopAsync(string gifMode)
+    /// <summary>output: "mp4" | "gif" | "webp" | "both" (mp4+gif) | "mp4+webp"</summary>
+    public async Task<RecordingResult> StopAsync(string output)
     {
         var result = new RecordingResult();
         if (State == RecordingState.Idle)
@@ -154,19 +163,46 @@ public class RecordingController
                 }
             }
 
-            if (gifMode is "gif" or "both")
+            // System audio: concat wavs and mux into the video
+            var wavs = (_audio?.Segments ?? (IReadOnlyList<string>)Array.Empty<string>()).Where(File.Exists).ToList();
+            if (wavs.Count > 0)
             {
-                var gif = Path.Combine(_workDir, _finalBaseName + ".gif");
-                if (await RunToolAsync(FfmpegArgs.BuildGifArgs(mp4, gif), gif))
+                var audioWav = wavs[0];
+                if (wavs.Count > 1)
                 {
-                    result.GifPath = gif;
-                    if (gifMode == "gif") { File.Delete(mp4); mp4 = ""; }
+                    var wavList = Path.Combine(_sessionDir, "wavlist.txt");
+                    File.WriteAllLines(wavList, wavs.Select(s => $"file '{s.Replace("'", "'\\''")}'"));
+                    audioWav = Path.Combine(_sessionDir, "audio.wav");
+                    if (!await RunToolAsync(FfmpegArgs.BuildConcatArgs(wavList, audioWav), audioWav))
+                        audioWav = "";
                 }
-                else
+                if (!string.IsNullOrEmpty(audioWav))
                 {
-                    result.Error = "gif encode failed (mp4 kept)";
+                    var muxed = Path.Combine(_sessionDir, "muxed.mp4");
+                    var hasMic = !string.IsNullOrEmpty(_options?.MicDevice);
+                    if (await RunToolAsync(FfmpegArgs.BuildMuxArgs(mp4, audioWav, muxed, hasMic), muxed))
+                        File.Move(muxed, mp4, overwrite: true);
+                    else
+                        Log.Error("audio mux failed; keeping silent video");
                 }
             }
+
+            var wantGif = output is "gif" or "both";
+            var wantWebp = output is "webp" or "mp4+webp";
+            var keepMp4 = output is "mp4" or "both" or "mp4+webp";
+            if (wantGif)
+            {
+                var gif = Path.Combine(_workDir, _finalBaseName + ".gif");
+                if (await RunToolAsync(FfmpegArgs.BuildGifArgs(mp4, gif), gif)) result.GifPath = gif;
+                else result.Error = "gif encode failed (mp4 kept)";
+            }
+            if (wantWebp)
+            {
+                var webp = Path.Combine(_workDir, _finalBaseName + ".webp");
+                if (await RunToolAsync(FfmpegArgs.BuildAnimatedWebpArgs(mp4, webp), webp)) result.WebpPath = webp;
+                else result.Error = "webp encode failed (mp4 kept)";
+            }
+            if (!keepMp4 && result.Error is null) { File.Delete(mp4); mp4 = ""; }
             if (!string.IsNullOrEmpty(mp4) && File.Exists(mp4)) result.Mp4Path = mp4;
 
             if (result.Error is null)

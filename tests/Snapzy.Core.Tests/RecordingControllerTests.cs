@@ -121,6 +121,67 @@ public class RecordingControllerTests : IDisposable
         Assert.Contains("gdigrab", string.Join(" ", h.Spawns[1].Psi.ArgumentList));
     }
 
+    private class FakeAudio : ISystemAudioRecorder
+    {
+        public readonly List<string> Started = new();
+        public int StopCalls;
+        private readonly List<string> _segments = new();
+        public IReadOnlyList<string> Segments => _segments;
+        public void StartSegment(string wavPath)
+        {
+            Started.Add(wavPath);
+            _segments.Add(wavPath);
+            File.WriteAllBytes(wavPath, new byte[] { 0x52, 0x49, 0x46, 0x46 }); // "RIFF" stub
+        }
+        public void StopSegment() => StopCalls++;
+        public void Dispose() { }
+    }
+
+    [Fact]
+    public async Task Webp_Output_ProducesWebpAndDeletesMp4()
+    {
+        var h = new Harness();
+        var c = MakeController(h);
+        await c.StartAsync(Opts(), "rec1");
+        var result = await c.StopAsync("webp");
+        Assert.Null(result.Error);
+        Assert.Null(result.Mp4Path);
+        Assert.NotNull(result.WebpPath);
+        Assert.True(File.Exists(result.WebpPath));
+        Assert.Contains(h.Spawns, s => string.Join(" ", s.Psi.ArgumentList).Contains("libwebp"));
+    }
+
+    [Fact]
+    public async Task Mp4PlusWebp_KeepsBoth()
+    {
+        var h = new Harness();
+        var c = MakeController(h);
+        await c.StartAsync(Opts(), "rec1");
+        var result = await c.StopAsync("mp4+webp");
+        Assert.Null(result.Error);
+        Assert.NotNull(result.Mp4Path);
+        Assert.NotNull(result.WebpPath);
+    }
+
+    [Fact]
+    public async Task SystemAudio_SegmentsFollowPauseResume_AndMuxRuns()
+    {
+        var h = new Harness();
+        var audio = new FakeAudio();
+        var c = new RecordingController("ffmpeg.exe", _dir, h.Factory, audio) { FastFailDelay = TimeSpan.FromMilliseconds(30) };
+        await c.StartAsync(Opts(), "rec1");
+        await c.PauseAsync();
+        await c.ResumeAsync();
+        var result = await c.StopAsync("mp4");
+        Assert.Null(result.Error);
+        Assert.Equal(2, audio.Started.Count);          // one wav per video segment
+        Assert.Equal(2, audio.StopCalls);
+        Assert.Contains(h.Spawns, s => string.Join(" ", s.Psi.ArgumentList).Contains("-map")
+            && string.Join(" ", s.Psi.ArgumentList).Contains("aac"));
+        Assert.NotNull(result.Mp4Path);
+        Assert.True(File.Exists(result.Mp4Path));
+    }
+
     [Fact]
     public async Task Stop_GifMode_ProducesGifAndDeletesMp4()
     {
