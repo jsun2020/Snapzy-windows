@@ -44,4 +44,31 @@ public static class FfmpegArgs
 
     public static List<string> BuildWebpArgs(string inPng, string outWebp) => new()
     { "-y", "-hide_banner", "-i", inPng, "-c:v", "libwebp", "-quality", "90", outWebp };
+
+    public static List<string> BuildAnimatedWebpArgs(string inMp4, string outWebp) => new()
+    {
+        "-y", "-hide_banner", "-i", inMp4,
+        "-vf", "fps=15", "-c:v", "libwebp", "-lossless", "0", "-q:v", "75", "-loop", "0",
+        outWebp,
+    };
+
+    public static List<string> BuildMuxArgs(string videoMp4, string audioWav, string outMp4, bool mixWithExistingAudio)
+    {
+        if (mixWithExistingAudio)
+        {
+            return new()
+            {
+                "-y", "-hide_banner", "-i", videoMp4, "-i", audioWav,
+                "-filter_complex", "[0:a][1:a]amix=inputs=2:duration=first[a]",
+                "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                outMp4,
+            };
+        }
+        return new()
+        {
+            "-y", "-hide_banner", "-i", videoMp4, "-i", audioWav,
+            "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest",
+            outMp4,
+        };
+    }
 }

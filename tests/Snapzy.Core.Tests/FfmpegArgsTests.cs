@@ -50,6 +50,35 @@ public class FfmpegArgsTests
     }
 
     [Fact]
+    public void AnimatedWebp_UsesLibwebpWithLoop()
+    {
+        var joined = string.Join(" ", FfmpegArgs.BuildAnimatedWebpArgs("in.mp4", "out.webp"));
+        Assert.Contains("libwebp", joined);
+        Assert.Contains("-loop 0", joined);
+        Assert.Contains("fps=15", joined);
+        Assert.EndsWith("out.webp", joined);
+    }
+
+    [Fact]
+    public void Mux_NoExistingAudio_MapsWavAsAac()
+    {
+        var joined = string.Join(" ", FfmpegArgs.BuildMuxArgs("v.mp4", "a.wav", "out.mp4", mixWithExistingAudio: false));
+        Assert.Contains("-map 0:v", joined);
+        Assert.Contains("-map 1:a", joined);
+        Assert.Contains("-c:v copy", joined);
+        Assert.Contains("-c:a aac", joined);
+        Assert.Contains("-shortest", joined);
+    }
+
+    [Fact]
+    public void Mux_WithExistingAudio_UsesAmix()
+    {
+        var joined = string.Join(" ", FfmpegArgs.BuildMuxArgs("v.mp4", "a.wav", "out.mp4", mixWithExistingAudio: true));
+        Assert.Contains("amix=inputs=2", joined);
+        Assert.Contains("-c:v copy", joined);
+    }
+
+    [Fact]
     public void Concat_UsesCopyCodec()
     {
         var joined = string.Join(" ", FfmpegArgs.BuildConcatArgs("list.txt", "out.mp4"));
