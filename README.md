@@ -66,6 +66,9 @@ cell's content and recognizes it cell by cell - this also handles cells with a
 single character, which whole-image Windows OCR cannot see at all. Borderless
 layouts use text-position clustering instead. When nothing is recognized the
 clipboard is left unchanged and a "No text found" balloon is shown.
+Single letters without word context can still be misread occasionally
+(e.g. g/a, j/i at small sizes) - capturing the table at a higher zoom level
+improves accuracy.
 
 ## Scrolling capture (v1.1)
 

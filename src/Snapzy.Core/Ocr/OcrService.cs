@@ -81,7 +81,6 @@ public static class OcrService
     private static async Task<string[][]> RecognizeGridAsync(Bitmap bmp, Rectangle[][] cells)
     {
         const int inset = 3;      // stay clear of the border lines
-        const int margin = 24;    // white margin around the strip
         var result = new string[cells.Length][];
         for (var r = 0; r < cells.Length; r++)
         {
@@ -98,64 +97,106 @@ public static class OcrService
                     ? GridDetector.FindContentBounds(bmp, src)
                     : null;
             }
-            // Compose at a normalized glyph height with a SMALL gap: neighbors
-            // make the engine see every glyph (it may fuse cells into one
-            // word, which is fine - characters are mapped back individually).
-            const int normHeight = 32;
-            const int gap = 12;
-            var segStarts = new int[row.Length];
-            var segWidths = new int[row.Length];
-            var x = margin;
-            for (var c = 0; c < row.Length; c++)
-            {
-                segStarts[c] = x;
-                var w = contents[c] is { } b
-                    ? Math.Max(4, (int)Math.Round(b.Width * (double)normHeight / Math.Max(1, b.Height)))
-                    : 8;
-                segWidths[c] = w;
-                x += w + gap;
-            }
-            using var strip = new Bitmap(x - gap + margin, normHeight + margin * 2, PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(strip))
-            {
-                g.Clear(Color.White);
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                for (var c = 0; c < row.Length; c++)
-                {
-                    if (contents[c] is not { } src) continue;
-                    g.DrawImage(bmp,
-                        new Rectangle(segStarts[c], margin, segWidths[c], normHeight),
-                        src, GraphicsUnit.Pixel);
-                }
-            }
 
-            var (_, words) = await RecognizeCoreAsync(strip);
-            var cellText = new string[row.Length];
-            Array.Fill(cellText, "");
-            foreach (var word in words.OrderBy(w => w.X))
+            // The engine's acceptance of composed strips is finicky and
+            // rendering-dependent; try both composition styles and keep the
+            // row with more recognized cells.
+            var attemptA = await ComposeAndRecognizeRowAsync(bmp, row, contents, perGlyphHeight: false);
+            var filledA = attemptA.Count(t => t.Length > 0);
+            if (filledA == row.Length)
             {
-                // Assign character-by-character: interpolate each character's
-                // center across the word's bounding box, pick its segment.
-                var chars = word.Text;
-                for (var i = 0; i < chars.Length; i++)
-                {
-                    var charCenter = word.X + word.Width * (i + 0.5) / chars.Length;
-                    var seg = 0;
-                    var bestDist = double.MaxValue;
-                    for (var c = 0; c < row.Length; c++)
-                    {
-                        var segCenter = segStarts[c] + segWidths[c] / 2.0;
-                        var dist = Math.Abs(charCenter - segCenter);
-                        // Inside the segment always wins; otherwise nearest center.
-                        if (charCenter >= segStarts[c] && charCenter <= segStarts[c] + segWidths[c]) { seg = c; break; }
-                        if (dist < bestDist) { bestDist = dist; seg = c; }
-                    }
-                    cellText[seg] += chars[i];
-                }
+                result[r] = attemptA;
+                continue;
             }
-            result[r] = cellText.Select(t => t.Trim()).ToArray();
+            var attemptB = await ComposeAndRecognizeRowAsync(bmp, row, contents, perGlyphHeight: true);
+            var filledB = attemptB.Count(t => t.Length > 0);
+            result[r] = filledB > filledA ? attemptB : attemptA;
         }
         return result;
+    }
+
+    private static async Task<string[]> ComposeAndRecognizeRowAsync(
+        Bitmap bmp, Rectangle[] row, Rectangle?[] contents, bool perGlyphHeight)
+    {
+        // Compose at a normalized glyph height with a SMALL gap: neighbors
+        // make the engine see every glyph (it may fuse cells into one word,
+        // which is fine - characters are mapped back individually).
+        // Two styles exist because the engine accepts different renderings:
+        // baseline-preserving (one scale per row, natural x-heights) and
+        // per-glyph height normalization. 32px/12px sit in the acceptance
+        // window; larger compositions make it drop rows entirely.
+        const int margin = 24;    // white margin around the strip
+        const int normHeight = 32;
+        const int gap = 12;
+        var maxContentHeight = Math.Max(1, contents.Max(b => b?.Height ?? 0));
+        var rowScale = (double)normHeight / maxContentHeight;
+        var contentTop = contents.Where(b => b.HasValue).Select(b => b!.Value.Y)
+            .DefaultIfEmpty(0).Min();
+
+        var segStarts = new int[row.Length];
+        var segWidths = new int[row.Length];
+        var x = margin;
+        for (var c = 0; c < row.Length; c++)
+        {
+            segStarts[c] = x;
+            var scale = perGlyphHeight && contents[c] is { } pb
+                ? (double)normHeight / Math.Max(1, pb.Height)
+                : rowScale;
+            segWidths[c] = contents[c] is { } b
+                ? Math.Max(4, (int)Math.Round(b.Width * scale))
+                : 8;
+            x += segWidths[c] + gap;
+        }
+        using var strip = new Bitmap(x - gap + margin, normHeight + margin * 2, PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(strip))
+        {
+            g.Clear(Color.White);
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            for (var c = 0; c < row.Length; c++)
+            {
+                if (contents[c] is not { } src) continue;
+                int destY, destH;
+                if (perGlyphHeight)
+                {
+                    destY = margin;
+                    destH = normHeight;
+                }
+                else
+                {
+                    destY = margin + (int)Math.Round((src.Y - contentTop) * rowScale);
+                    destH = Math.Max(2, (int)Math.Round(src.Height * rowScale));
+                }
+                g.DrawImage(bmp,
+                    new Rectangle(segStarts[c], destY, segWidths[c], destH),
+                    src, GraphicsUnit.Pixel);
+            }
+        }
+
+        var (_, words) = await RecognizeCoreAsync(strip);
+        var cellText = new string[row.Length];
+        Array.Fill(cellText, "");
+        foreach (var word in words.OrderBy(w => w.X))
+        {
+            // Assign character-by-character: interpolate each character's
+            // center across the word's bounding box, pick its segment.
+            var chars = word.Text;
+            for (var i = 0; i < chars.Length; i++)
+            {
+                var charCenter = word.X + word.Width * (i + 0.5) / chars.Length;
+                var seg = 0;
+                var bestDist = double.MaxValue;
+                for (var c = 0; c < row.Length; c++)
+                {
+                    var segCenter = segStarts[c] + segWidths[c] / 2.0;
+                    var dist = Math.Abs(charCenter - segCenter);
+                    // Inside the segment always wins; otherwise nearest center.
+                    if (charCenter >= segStarts[c] && charCenter <= segStarts[c] + segWidths[c]) { seg = c; break; }
+                    if (dist < bestDist) { bestDist = dist; seg = c; }
+                }
+                cellText[seg] += chars[i];
+            }
+        }
+        return cellText.Select(t => t.Trim()).ToArray();
     }
 
     private static async Task<(List<string> Lines, List<OcrWordBox> Words)> RecognizeCoreAsync(Bitmap bmp)

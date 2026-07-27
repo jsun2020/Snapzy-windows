@@ -43,6 +43,10 @@ public static class GridDetector
     /// Tight bounding box of dark (ink) pixels inside a region, or null when
     /// the region is blank. Used to crop cell CONTENT for composition.
     /// </summary>
+    // Content bounds use a permissive threshold so anti-aliased stroke edges
+    // (e.g. the hook of a small "j") are not clipped off.
+    private const byte ContentThreshold = 190;
+
     public static Rectangle? FindContentBounds(Bitmap bmp, Rectangle region)
     {
         int minX = int.MaxValue, minY = int.MaxValue, maxX = -1, maxY = -1;
@@ -58,7 +62,7 @@ public static class GridDetector
                     for (var x = Math.Max(0, region.Left); x < Math.Min(bmp.Width, region.Right); x++)
                     {
                         var lum = (row[x * 4 + 2] * 299 + row[x * 4 + 1] * 587 + row[x * 4] * 114) / 1000;
-                        if (lum < DarkThreshold)
+                        if (lum < ContentThreshold)
                         {
                             if (x < minX) minX = x;
                             if (x > maxX) maxX = x;
