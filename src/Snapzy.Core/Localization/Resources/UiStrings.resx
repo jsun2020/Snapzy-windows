@@ -312,4 +312,16 @@
   <data name="Action_OpenHistory" xml:space="preserve">
     <value>Open capture history</value>
   </data>
+  <data name="Tray_ScrollCapture" xml:space="preserve">
+    <value>Scrolling Capture</value>
+  </data>
+  <data name="Scroll_Progress" xml:space="preserve">
+    <value>Scrolling capture in progress...</value>
+  </data>
+  <data name="Scroll_Cancel" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Toast_ScrollNeedWindow" xml:space="preserve">
+    <value>Click a window in the overlay to scroll-capture it</value>
+  </data>
 </root>

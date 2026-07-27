@@ -312,4 +312,16 @@
   <data name="Action_OpenHistory" xml:space="preserve">
     <value>打开截图历史</value>
   </data>
+  <data name="Tray_ScrollCapture" xml:space="preserve">
+    <value>滚动截图</value>
+  </data>
+  <data name="Scroll_Progress" xml:space="preserve">
+    <value>滚动截图进行中...</value>
+  </data>
+  <data name="Scroll_Cancel" xml:space="preserve">
+    <value>停止</value>
+  </data>
+  <data name="Toast_ScrollNeedWindow" xml:space="preserve">
+    <value>请在遮罩中点击要滚动截图的窗口</value>
+  </data>
 </root>

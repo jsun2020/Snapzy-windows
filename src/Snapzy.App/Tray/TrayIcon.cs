@@ -38,6 +38,7 @@ public sealed class TrayIcon : IDisposable
         menu.Items.Add(Strings.Get("Tray_CaptureArea"), null, (_, _) => AppActions.CaptureArea());
         menu.Items.Add(Strings.Get("Tray_CaptureFullscreen"), null, (_, _) => AppActions.CaptureFullscreen());
         menu.Items.Add(Strings.Get("Tray_CaptureAreaAnnotate"), null, (_, _) => AppActions.CaptureAreaAnnotate());
+        menu.Items.Add(Strings.Get("Tray_ScrollCapture"), null, (_, _) => AppActions.CaptureScrolling());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(Strings.Get(_recording ? "Tray_StopRecording" : "Tray_RecordScreen"), null, (_, _) => AppActions.ToggleRecording());
         menu.Items.Add(new ToolStripSeparator());

@@ -30,6 +30,52 @@ public static class AppActions
     public static void CaptureFullscreen() => CaptureFlow.RunFullscreen(Settings, History);
     public static void CaptureArea() => CaptureFlow.RunArea(Settings, History, forceAnnotate: false);
     public static void CaptureAreaAnnotate() => CaptureFlow.RunArea(Settings, History, forceAnnotate: true);
+
+    public static async void CaptureScrolling()
+    {
+        try
+        {
+            var sel = Overlay.OverlayWindow.ShowAndSelect(startInWindowMode: true);
+            if (sel is null) return;
+            if (sel.Hwnd == IntPtr.Zero)
+            {
+                Tray?.Balloon("Snapzy", Strings.Get("Toast_ScrollNeedWindow"));
+                return;
+            }
+            var progress = new Overlay.ScrollProgressWindow();
+            progress.Show();
+            var result = await Task.Run(() => Snapzy.Core.Capture.ScrollCapture.Run(
+                sel.Hwnd,
+                onStep: s => progress.SetStep(s),
+                isCancelled: () => progress.Cancelled));
+            progress.Close();
+
+            if (result.Image is null)
+            {
+                Log.Error("Scroll capture failed: " + result.Error);
+                Tray?.Balloon("Snapzy", Strings.Get("Toast_CaptureFailed") + ": " + result.Error);
+                return;
+            }
+            using var bmp = result.Image;
+            var name = Snapzy.Core.History.FileNamer.NewCaptureName(DateTime.Now, Settings.ImageFormat);
+            var path = System.IO.Path.Combine(AppPaths.CapturesDir, name);
+            Snapzy.Core.Capture.ImageSaver.Save(bmp, path, Settings.ImageFormat, AppPaths.FfmpegExe);
+            var entry = History.Add(name, "image");
+            Log.Info($"Scroll capture saved {name} ({bmp.Width}x{bmp.Height}, {result.Steps} steps)");
+            if (Settings.Screenshot.CopyToClipboard)
+            {
+                CaptureFlow.CopyImageToClipboard(path);
+                Tray?.Balloon("Snapzy", Strings.Get("Toast_CopiedToClipboard"));
+            }
+            if (Settings.Screenshot.ShowQuickAccess)
+                QuickAccess.QuickAccessWindow.ShowFor(entry, History, Settings);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("CaptureScrolling failed", ex);
+            Tray?.Balloon("Snapzy", Strings.Get("Toast_CaptureFailed"));
+        }
+    }
     private static RecordingController? _recorder;
     private static Recorder.RecordingHud? _hud;
 
