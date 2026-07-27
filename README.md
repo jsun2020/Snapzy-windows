@@ -1,12 +1,12 @@
 # Snapzy for Windows
 
 A portable Windows port of [Snapzy](https://github.com/inject-cell/Snapzy) - screenshot,
-screen recording and annotation from the system tray. No installer, no admin rights,
-no .NET runtime required.
+screen recording, OCR and annotation from the system tray. No installer, no admin
+rights, no .NET runtime required.
 
 ## Quick start
 
-1. Extract `Snapzy-Windows-v1.0.0-portable.zip` anywhere (do not run from inside the zip).
+1. Extract `Snapzy-Windows-v1.1.0-portable.zip` anywhere (do not run from inside the zip).
 2. Run `Snapzy.exe`. The icon appears in the system tray.
 3. Press `Ctrl+Shift+4` and drag to take your first screenshot.
 
@@ -17,6 +17,7 @@ no .NET runtime required.
 
 | Action | Hotkey |
 |---|---|
+| OCR capture (copy text) | `Ctrl+Shift+2` |
 | Fullscreen screenshot | `Ctrl+Shift+3` |
 | Area / window screenshot | `Ctrl+Shift+4` |
 | Area screenshot + annotate | `Ctrl+Shift+7` |
@@ -45,11 +46,29 @@ No registry writes, nothing in `%APPDATA%`. Deleting the folder removes Snapzy
 completely. The single optional exception: enabling **Launch at login** in Settings
 creates `Snapzy.lnk` in your Startup folder (removed when you disable the option).
 
+## OCR (v1.1)
+
+`Ctrl+Shift+2` selects a region (or window) and copies its text to the clipboard
+using the in-box Windows OCR - no cloud, works offline. Recognition languages
+follow your Windows language packs (English and Chinese both work when installed).
+Old screenshots can be OCR'd from the history window's right-click menu.
+
+## Scrolling capture (v1.1)
+
+Tray menu -> Scrolling Capture, then click the target window in the overlay.
+Snapzy scrolls the window and stitches the frames into one tall image, starting
+from the current scroll position. Works with windows that honor mouse-wheel
+messages (browsers, editors, file lists); pages with sticky headers or animated
+content may stop the stitch early - the partial result is kept.
+
 ## Recording
 
 Recording uses the bundled `ffmpeg/ffmpeg.exe` (BtbN ffmpeg build, GPL, includes
-ddagrab/libx264). MP4 (H.264) by default; GIF or both via Settings -> Recording.
-Pause/resume produces seamless output. Optional microphone audio via DirectShow.
+ddagrab/libx264). MP4 (H.264) by default; GIF, animated WebP, or MP4+GIF /
+MP4+WebP via Settings -> Recording. Pause/resume produces seamless output.
+Optional microphone audio via DirectShow, and (v1.1) system audio ("what you
+hear") via WASAPI loopback - enable it in Settings -> Recording. Audio is
+start-aligned with the video; no drift compensation is applied.
 
 If your machine cannot use Desktop Duplication (some remote sessions), Snapzy
 automatically falls back to GDI capture.
@@ -64,14 +83,24 @@ any build with `ddagrab` or `gdigrab` plus `libx264` works.
 English and 简体中文 (Settings -> General -> Language; applies immediately to the
 tray menu, other windows use the new language when reopened).
 
-## Known limitations (v1.0)
+## Known limitations
 
 - Mixed-DPI multi-monitor setups: the selection overlay uses the primary monitor's
   scale for its visuals; captured pixels are always correct.
 - Theme setting affects Snapzy's own windows only.
-- Folder size is ~270 MB unpacked, dominated by the bundled full ffmpeg build
+- Scrolling capture: requires the window to honor posted wheel messages; captures
+  content from the current scroll position downward; window chrome (scrollbars)
+  is trimmed automatically, sticky in-page headers are not.
+- OCR of very tall images is processed in 2000px slices with a 40px overlap; an
+  occasional duplicated line at a slice boundary is possible.
+- Folder size is ~300 MB unpacked, dominated by the bundled full ffmpeg build
   (~120 MB) and the self-contained .NET runtime; a trimmed ffmpeg build would
   reduce this substantially.
+
+## Third-party components
+
+- ffmpeg (bundled exe, GPL) - screen/GIF/WebP encoding
+- [NAudio](https://github.com/naudio/NAudio) (MIT) - WASAPI loopback capture
 
 ## Uninstall
 

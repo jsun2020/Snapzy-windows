@@ -1,5 +1,6 @@
 # Builds the portable Snapzy for Windows package.
 $ErrorActionPreference = "Stop"
+$version = "1.1.0"
 $root = $PSScriptRoot
 $out = Join-Path $root "publish\Snapzy"
 if (Test-Path $out) { Remove-Item -Recurse -Force $out }
@@ -17,7 +18,7 @@ if (-not (Test-Path (Join-Path $out "zh-CN\Snapzy.Core.resources.dll"))) { throw
 if (-not (Test-Path (Join-Path $out "Assets\snapzy.ico"))) { throw "tray icon asset missing" }
 & (Join-Path $out "ffmpeg\ffmpeg.exe") -version 2>&1 | Select-Object -First 1
 
-$zip = Join-Path $root "publish\Snapzy-Windows-v1.0.0-portable.zip"
+$zip = Join-Path $root "publish\Snapzy-Windows-v$version-portable.zip"
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path $out -DestinationPath $zip
 $sizeMB = [math]::Round((Get-Item $zip).Length / 1MB, 1)

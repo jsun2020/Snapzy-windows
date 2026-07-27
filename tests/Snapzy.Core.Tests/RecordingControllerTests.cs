@@ -35,8 +35,9 @@ public class RecordingControllerTests : IDisposable
             {
                 if (args.Contains("concat"))
                     ConcatListText = File.ReadAllText(args[args.IndexOf("-i") + 1]);
-                // ffmpeg would produce the output file
-                File.WriteAllText(output, "stub");
+                // ffmpeg would produce the output file (must exceed the
+                // controller's empty-container size floor)
+                File.WriteAllBytes(output, new byte[4096]);
             }
             Spawns.Add((psi, proc));
             return proc;

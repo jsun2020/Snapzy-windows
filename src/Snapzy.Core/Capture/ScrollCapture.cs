@@ -23,6 +23,8 @@ public static class ScrollCapture
     [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern IntPtr RealChildWindowFromPoint(IntPtr parent, POINT point);
+    [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
+    private const int SM_CXVSCROLL = 2;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT { public int X, Y; }
@@ -50,6 +52,13 @@ public static class ScrollCapture
             var origin = new POINT { X = cr.Left, Y = cr.Top };
             ClientToScreen(hwnd, ref origin);
             var clientRect = new Rectangle(origin.X, origin.Y, cr.Right - cr.Left, cr.Bottom - cr.Top);
+
+            // Exclude the vertical-scrollbar column: its arrows/thumb are static
+            // chrome inside otherwise-scrolling rows and would break overlap
+            // detection (and look bad repeated in the stitch).
+            var vscroll = GetSystemMetrics(SM_CXVSCROLL) + 2;
+            if (clientRect.Width > vscroll * 4) clientRect.Width -= vscroll;
+
             var centerX = clientRect.X + clientRect.Width / 2;
             var centerY = clientRect.Y + clientRect.Height / 2;
 

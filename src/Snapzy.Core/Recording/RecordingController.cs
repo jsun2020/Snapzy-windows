@@ -223,7 +223,10 @@ public class RecordingController
     {
         var proc = _factory(BuildPsi(args));
         var exit = await proc.WaitForExitAsync(EncodeTimeout);
-        return exit == 0 && File.Exists(expectedOutput);
+        // ffmpeg can exit 0 with an empty container (e.g. -shortest against an
+        // empty stream); a header-only file must count as failure.
+        var info = new FileInfo(expectedOutput);
+        return exit == 0 && info.Exists && info.Length > 1024;
     }
 
     private ProcessStartInfo BuildPsi(List<string> args)
