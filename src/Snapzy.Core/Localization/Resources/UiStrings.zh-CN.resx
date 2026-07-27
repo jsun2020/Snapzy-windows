@@ -330,6 +330,9 @@
   <data name="Toast_OcrCopied" xml:space="preserve">
     <value>文字已复制到剪贴板</value>
   </data>
+  <data name="Toast_OcrTableCopied" xml:space="preserve">
+    <value>表格已复制（{0} 行 x {1} 列）- 可直接粘贴到 Excel</value>
+  </data>
   <data name="Toast_OcrEmpty" xml:space="preserve">
     <value>未识别到文字</value>
   </data>

@@ -53,6 +53,11 @@ using the in-box Windows OCR - no cloud, works offline. Recognition languages
 follow your Windows language packs (English and Chinese both work when installed).
 Old screenshots can be OCR'd from the history window's right-click menu.
 
+**Table recognition (v1.2)**: when the image contains a table (spreadsheet
+screenshots, reports), Snapzy detects the rows and columns from the text layout
+and copies tab-separated cells - paste straight into Excel/WPS and each value
+lands in its own cell. Non-tabular images copy as plain text, as before.
+
 ## Scrolling capture (v1.1)
 
 Tray menu -> Scrolling Capture, then click the target window in the overlay.

@@ -7,6 +7,8 @@ using Windows.Media.Ocr;
 
 namespace Snapzy.Core.Ocr;
 
+public record OcrClipboardResult(string Text, bool IsTable, int Rows, int Columns);
+
 public static class OcrService
 {
     private const int SliceHeight = 2000; // OcrEngine.MaxImageDimension is 2600
@@ -26,18 +28,45 @@ public static class OcrService
 
     public static async Task<string> RecognizeBitmapAsync(Bitmap bmp)
     {
+        var (lines, _) = await RecognizeCoreAsync(bmp);
+        return string.Join("\n", lines).Trim();
+    }
+
+    /// <summary>
+    /// Clipboard-oriented recognition: tabular layouts (detected from word
+    /// geometry) come back as tab-separated cells so they paste into
+    /// spreadsheets as a table; everything else as plain lines.
+    /// </summary>
+    public static async Task<OcrClipboardResult> RecognizeForClipboardAsync(Bitmap bmp)
+    {
+        var (lines, words) = await RecognizeCoreAsync(bmp);
+        var table = TableReconstructor.ToTable(words);
+        if (table is not null)
+            return new OcrClipboardResult(TableReconstructor.ToTsv(table), true, table.Length, table[0].Length);
+        return new OcrClipboardResult(string.Join("\n", lines).Trim(), false, 0, 0);
+    }
+
+    private static async Task<(List<string> Lines, List<OcrWordBox> Words)> RecognizeCoreAsync(Bitmap bmp)
+    {
         var engine = CreateEngine() ?? throw new InvalidOperationException("No OCR language available");
         var lines = new List<string>();
+        var words = new List<OcrWordBox>();
         for (var top = 0; top < bmp.Height; top += SliceHeight - SliceOverlap)
         {
             var h = Math.Min(SliceHeight, bmp.Height - top);
             using var slice = bmp.Clone(new Rectangle(0, top, bmp.Width, h), PixelFormat.Format32bppArgb);
             var soft = ToSoftwareBitmap(slice);
             var result = await engine.RecognizeAsync(soft);
-            lines.AddRange(result.Lines.Select(l => l.Text).Where(t => !string.IsNullOrWhiteSpace(t)));
+            foreach (var line in result.Lines)
+            {
+                if (string.IsNullOrWhiteSpace(line.Text)) continue;
+                lines.Add(line.Text);
+                words.AddRange(line.Words.Select(w => new OcrWordBox(
+                    w.Text, w.BoundingRect.X, w.BoundingRect.Y + top, w.BoundingRect.Width, w.BoundingRect.Height)));
+            }
             if (h < SliceHeight) break;
         }
-        return string.Join("\n", lines).Trim();
+        return (lines, words);
     }
 
     private static SoftwareBitmap ToSoftwareBitmap(Bitmap bmp)

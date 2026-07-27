@@ -330,6 +330,9 @@
   <data name="Toast_OcrCopied" xml:space="preserve">
     <value>Text copied to clipboard</value>
   </data>
+  <data name="Toast_OcrTableCopied" xml:space="preserve">
+    <value>Table copied ({0} rows x {1} columns) - paste into Excel</value>
+  </data>
   <data name="Toast_OcrEmpty" xml:space="preserve">
     <value>No text found</value>
   </data>

@@ -48,15 +48,17 @@ public static class AppActions
             using var bmp = sel.Hwnd != IntPtr.Zero
                 ? Snapzy.Core.Capture.ScreenCapture.CaptureWindow(sel.Hwnd)
                 : Snapzy.Core.Capture.ScreenCapture.CaptureRect(sel.Rect);
-            var text = await Snapzy.Core.Ocr.OcrService.RecognizeBitmapAsync(bmp);
-            if (string.IsNullOrWhiteSpace(text))
+            var ocr = await Snapzy.Core.Ocr.OcrService.RecognizeForClipboardAsync(bmp);
+            if (string.IsNullOrWhiteSpace(ocr.Text))
             {
                 Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrEmpty"));
                 return;
             }
-            System.Windows.Clipboard.SetText(text);
-            Log.Info($"OCR copied {text.Length} chars");
-            Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrCopied"));
+            System.Windows.Clipboard.SetText(ocr.Text);
+            Log.Info($"OCR copied {ocr.Text.Length} chars" + (ocr.IsTable ? $" as {ocr.Rows}x{ocr.Columns} table" : ""));
+            Tray?.Balloon("Snapzy", ocr.IsTable
+                ? string.Format(Strings.Get("Toast_OcrTableCopied"), ocr.Rows, ocr.Columns)
+                : Strings.Get("Toast_OcrCopied"));
         }
         catch (Exception ex)
         {

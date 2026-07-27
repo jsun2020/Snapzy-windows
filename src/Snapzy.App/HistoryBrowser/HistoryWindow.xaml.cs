@@ -165,14 +165,17 @@ public partial class HistoryWindow : Window
                 AppActions.Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrUnavailable"));
                 return;
             }
-            var text = await Snapzy.Core.Ocr.OcrService.RecognizeFileAsync(_store.GetFullPath(entry));
-            if (string.IsNullOrWhiteSpace(text))
+            using var bmp = new System.Drawing.Bitmap(_store.GetFullPath(entry));
+            var ocr = await Snapzy.Core.Ocr.OcrService.RecognizeForClipboardAsync(bmp);
+            if (string.IsNullOrWhiteSpace(ocr.Text))
             {
                 AppActions.Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrEmpty"));
                 return;
             }
-            System.Windows.Clipboard.SetText(text);
-            AppActions.Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrCopied"));
+            System.Windows.Clipboard.SetText(ocr.Text);
+            AppActions.Tray?.Balloon("Snapzy", ocr.IsTable
+                ? string.Format(Strings.Get("Toast_OcrTableCopied"), ocr.Rows, ocr.Columns)
+                : Strings.Get("Toast_OcrCopied"));
         }
         catch (Exception ex)
         {
