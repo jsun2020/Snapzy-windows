@@ -87,13 +87,19 @@ public static class AppActions
         }
     }
 
-    public static async void CaptureScrolling()
+    public static void CaptureScrolling()
+    {
+        var sel = Overlay.OverlayWindow.ShowAndSelect(startInWindowMode: true);
+        if (sel is null) return;
+        ScrollCaptureWindow(sel.Hwnd);
+    }
+
+    /// <summary>Scroll-captures a window (from the tray flow or the overlay toolbar).</summary>
+    internal static async void ScrollCaptureWindow(IntPtr hwnd)
     {
         try
         {
-            var sel = Overlay.OverlayWindow.ShowAndSelect(startInWindowMode: true);
-            if (sel is null) return;
-            if (sel.Hwnd == IntPtr.Zero)
+            if (hwnd == IntPtr.Zero)
             {
                 Tray?.Balloon("Snapzy", Strings.Get("Toast_ScrollNeedWindow"));
                 return;
@@ -101,7 +107,7 @@ public static class AppActions
             var progress = new Overlay.ScrollProgressWindow();
             progress.Show();
             var result = await Task.Run(() => Snapzy.Core.Capture.ScrollCapture.Run(
-                sel.Hwnd,
+                hwnd,
                 onStep: s => progress.SetStep(s),
                 isCancelled: () => progress.Cancelled));
             progress.Close();
@@ -113,22 +119,13 @@ public static class AppActions
                 return;
             }
             using var bmp = result.Image;
-            var name = Snapzy.Core.History.FileNamer.NewCaptureName(DateTime.Now, Settings.ImageFormat);
-            var path = System.IO.Path.Combine(AppPaths.CapturesDir, name);
-            Snapzy.Core.Capture.ImageSaver.Save(bmp, path, Settings.ImageFormat, AppPaths.FfmpegExe);
-            var entry = History.Add(name, "image");
-            Log.Info($"Scroll capture saved {name} ({bmp.Width}x{bmp.Height}, {result.Steps} steps)");
-            if (Settings.Screenshot.CopyToClipboard)
-            {
-                CaptureFlow.CopyImageToClipboard(path);
-                Tray?.Balloon("Snapzy", Strings.Get("Toast_CopiedToClipboard"));
-            }
-            if (Settings.Screenshot.ShowQuickAccess)
-                QuickAccess.QuickAccessWindow.ShowFor(entry, History, Settings);
+            var entry = CaptureFlow.SaveAndIndex(bmp, Settings, History);
+            Log.Info($"Scroll capture: {result.Steps} steps");
+            CaptureFlow.RunPostActions(entry, History, Settings, forceAnnotate: false);
         }
         catch (Exception ex)
         {
-            Log.Error("CaptureScrolling failed", ex);
+            Log.Error("ScrollCaptureWindow failed", ex);
             Tray?.Balloon("Snapzy", Strings.Get("Toast_CaptureFailed"));
         }
     }

@@ -43,6 +43,7 @@
         <Rectangle x:Name="DimLeft" Fill="#66000000" />
         <Rectangle x:Name="DimRight" Fill="#66000000" />
         <Rectangle x:Name="SelBorder" Stroke="#FF2E90FA" StrokeThickness="1" Fill="Transparent" Visibility="Collapsed" />
+        <Canvas x:Name="WmPreview" IsHitTestVisible="False" Visibility="Collapsed" />
         <Canvas x:Name="Handles" Visibility="Collapsed" />
         <Border x:Name="Hud" Background="#CC202020" CornerRadius="4" Padding="8,4" Visibility="Collapsed">
             <TextBlock x:Name="HudText" Foreground="White" FontSize="12" FontFamily="Consolas" />
@@ -59,8 +60,14 @@
                 <Button x:Name="TbOcr" Style="{StaticResource TbBtn}" Click="OnTbOcr">
                     <TextBlock FontSize="11" FontWeight="SemiBold" Text="OCR" />
                 </Button>
+                <Button x:Name="TbScroll" Style="{StaticResource TbBtn}" Click="OnTbScroll">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE896;" />
+                </Button>
                 <Button x:Name="TbRecord" Style="{StaticResource TbBtn}" Click="OnTbRecord">
                     <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE714;" />
+                </Button>
+                <Button x:Name="TbWatermark" Style="{StaticResource TbBtn}" Click="OnTbWatermark">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE790;" />
                 </Button>
                 <Border Width="1" Height="20" Background="#22000000" Margin="4,0" />
                 <Button x:Name="TbCancel" Style="{StaticResource TbBtn}" Click="OnTbCancel" Foreground="#DDC62828">
@@ -69,6 +76,17 @@
                 <Button x:Name="TbConfirm" Style="{StaticResource TbBtn}" Click="OnTbConfirm" Foreground="#DD2E7D32">
                     <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE73E;" />
                 </Button>
+            </StackPanel>
+        </Border>
+        <Border x:Name="WmBar" Background="#F8FFFFFF" CornerRadius="6" Padding="6,4"
+                Visibility="Collapsed" Cursor="Arrow">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.35" />
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal">
+                <TextBox x:Name="WmText" Width="150" Height="24" VerticalContentAlignment="Center"
+                         FontSize="12" BorderBrush="#33000000" />
+                <ComboBox x:Name="WmPos" Width="110" Height="24" Margin="6,0,0,0" FontSize="12" />
             </StackPanel>
         </Border>
         <Border x:Name="HintsBar" Background="#CC202020" CornerRadius="4" Padding="12,6">

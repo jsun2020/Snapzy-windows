@@ -78,6 +78,39 @@
   <data name="Toast_AlreadyRecording" xml:space="preserve">
     <value>Already recording - stop the current recording first</value>
   </data>
+  <data name="Overlay_ToolScroll" xml:space="preserve">
+    <value>Long screenshot (scrolls the window)</value>
+  </data>
+  <data name="Overlay_ToolWatermark" xml:space="preserve">
+    <value>Watermark</value>
+  </data>
+  <data name="Overlay_WmTextTip" xml:space="preserve">
+    <value>Watermark text</value>
+  </data>
+  <data name="Wm_Tile" xml:space="preserve">
+    <value>Tile</value>
+  </data>
+  <data name="Wm_TopLeft" xml:space="preserve">
+    <value>Top left</value>
+  </data>
+  <data name="Wm_TopCenter" xml:space="preserve">
+    <value>Top center</value>
+  </data>
+  <data name="Wm_TopRight" xml:space="preserve">
+    <value>Top right</value>
+  </data>
+  <data name="Wm_Center" xml:space="preserve">
+    <value>Center</value>
+  </data>
+  <data name="Wm_BottomLeft" xml:space="preserve">
+    <value>Bottom left</value>
+  </data>
+  <data name="Wm_BottomCenter" xml:space="preserve">
+    <value>Bottom center</value>
+  </data>
+  <data name="Wm_BottomRight" xml:space="preserve">
+    <value>Bottom right</value>
+  </data>
   <data name="QA_Copy" xml:space="preserve">
     <value>Copy</value>
   </data>

@@ -32,10 +32,23 @@ In the selection overlay: drag to select, `A` toggles window mode, click a windo
 to snap to it, arrow keys nudge (Shift+arrows resize), `Enter` confirms, `Esc` cancels.
 
 **Mouse-first capture (v1.6)**: releasing the drag (or clicking a window) shows a
-floating toolbar next to the selection - Annotate, Copy text (OCR), Record this
-area, Cancel, Confirm - so the whole flow works without touching the keyboard.
-The toolbar appears for the area-screenshot hotkey/menu; the OCR, recording and
-scrolling-capture entries keep their direct behavior.
+floating toolbar next to the selection - Annotate, Copy text (OCR), Long
+screenshot, Record this area, Watermark, Cancel, Confirm - so the whole flow
+works without touching the keyboard. The toolbar appears for the area-screenshot
+hotkey/menu; the OCR, recording and scrolling-capture entries keep their direct
+behavior.
+
+**Long screenshot from the toolbar (v1.7)**: the download-arrow button
+scroll-captures the window under your selection (same engine as the tray's
+Scrolling Capture).
+
+**Watermark (v1.7)**: the palette button toggles a watermark bar - type any
+text (Chinese OK) and pick a position (Tile / corners / center). A live
+preview is shown over the selection, and the watermark is baked into every
+saved screenshot (area, fullscreen, long screenshot) while enabled. The
+text/position/on-off state persists in `portable.json`; font size, opacity
+and color can be tweaked there (`Watermark` section, defaults: auto size,
+35% opacity, #FF3B30).
 
 In the annotation editor: `V` select, `R` rectangle, `O` ellipse, `L` line, `A` arrow,
 `P` pen, `T` text, `B` blur, `X` pixelate, `N` counter, `C` crop; `Ctrl+Z`/`Ctrl+Y`

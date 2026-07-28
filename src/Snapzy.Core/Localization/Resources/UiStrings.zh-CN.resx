@@ -78,6 +78,39 @@
   <data name="Toast_AlreadyRecording" xml:space="preserve">
     <value>正在录制中，请先停止当前录制</value>
   </data>
+  <data name="Overlay_ToolScroll" xml:space="preserve">
+    <value>长截图（滚动窗口）</value>
+  </data>
+  <data name="Overlay_ToolWatermark" xml:space="preserve">
+    <value>水印</value>
+  </data>
+  <data name="Overlay_WmTextTip" xml:space="preserve">
+    <value>水印文字</value>
+  </data>
+  <data name="Wm_Tile" xml:space="preserve">
+    <value>平铺</value>
+  </data>
+  <data name="Wm_TopLeft" xml:space="preserve">
+    <value>左上</value>
+  </data>
+  <data name="Wm_TopCenter" xml:space="preserve">
+    <value>上中</value>
+  </data>
+  <data name="Wm_TopRight" xml:space="preserve">
+    <value>右上</value>
+  </data>
+  <data name="Wm_Center" xml:space="preserve">
+    <value>居中</value>
+  </data>
+  <data name="Wm_BottomLeft" xml:space="preserve">
+    <value>左下</value>
+  </data>
+  <data name="Wm_BottomCenter" xml:space="preserve">
+    <value>下中</value>
+  </data>
+  <data name="Wm_BottomRight" xml:space="preserve">
+    <value>右下</value>
+  </data>
   <data name="QA_Copy" xml:space="preserve">
     <value>复制</value>
   </data>

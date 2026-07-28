@@ -1,11 +1,15 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Snapzy.Core;
 using Snapzy.Core.Capture;
+using Snapzy.Core.Editing;
 using Snapzy.Core.Localization;
+using Snapzy.Core.Settings;
 using DrawingRectangle = System.Drawing.Rectangle;
 using DrawingPoint = System.Drawing.Point;
 
@@ -35,6 +39,8 @@ public partial class OverlayWindow : Window
     private DrawingRectangle _selection;         // physical
     private IntPtr _selHwnd = IntPtr.Zero;       // set when the selection came from a window click
     private WindowInfo? _hoverWindow;
+    private bool _wmEnabled;
+    private bool _wmDirty;
 
     private OverlayWindow(bool startInWindowMode, bool showToolbar)
     {
@@ -51,11 +57,30 @@ public partial class OverlayWindow : Window
         TbRecord.ToolTip = Strings.Get("Overlay_ToolRecord");
         TbConfirm.ToolTip = Strings.Get("Overlay_ToolConfirm");
         TbCancel.ToolTip = Strings.Get("Overlay_ToolCancel");
+        TbScroll.ToolTip = Strings.Get("Overlay_ToolScroll");
+        TbWatermark.ToolTip = Strings.Get("Overlay_ToolWatermark");
         TbOcr.Visibility = Snapzy.Core.Ocr.OcrService.IsAvailable
             ? Visibility.Visible : Visibility.Collapsed;
         // Clicks on the toolbar chrome must not start a new drag selection.
         Toolbar.MouseDown += (_, e) => e.Handled = true;
         Toolbar.MouseUp += (_, e) => e.Handled = true;
+        WmBar.MouseDown += (_, e) => e.Handled = true;
+        WmBar.MouseUp += (_, e) => e.Handled = true;
+
+        var wm = AppActions.Settings.Watermark;
+        _wmEnabled = wm.Enabled;
+        WmText.Text = wm.Text;
+        WmText.ToolTip = Strings.Get("Overlay_WmTextTip");
+        // The window disables the IME for single-letter shortcuts; the
+        // watermark text box needs it back for CJK input.
+        InputMethod.SetIsInputMethodEnabled(WmText, true);
+        foreach (var name in Enum.GetNames<WatermarkPosition>())
+            WmPos.Items.Add(new ComboBoxItem { Content = Strings.Get("Wm_" + name), Tag = name });
+        WmPos.SelectedIndex = (int)WatermarkLayout.ParsePosition(wm.Position);
+        WmText.TextChanged += (_, _) => { _wmDirty = true; UpdateVisuals(); };
+        WmPos.SelectionChanged += (_, _) => { _wmDirty = true; UpdateVisuals(); };
+        UpdateWmButtonLook();
+        Closed += (_, _) => PersistWatermark();
 
         SourceInitialized += (_, _) =>
         {
@@ -179,6 +204,18 @@ public partial class OverlayWindow : Window
 
     private void OnKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        // While typing watermark text, letters/arrows belong to the text box;
+        // Enter/Esc just commit and return focus to the overlay.
+        if (WmText.IsKeyboardFocusWithin)
+        {
+            if (e.Key is Key.Enter or Key.Escape)
+            {
+                Keyboard.ClearFocus();
+                Focus();
+                e.Handled = true;
+            }
+            return;
+        }
         var shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
         switch (e.Key)
         {
@@ -237,6 +274,54 @@ public partial class OverlayWindow : Window
     private void OnTbRecord(object sender, RoutedEventArgs e) => Confirm(_selection, _selHwnd, OverlayAction.Record);
     private void OnTbCancel(object sender, RoutedEventArgs e) { _result = null; Close(); }
 
+    private void OnTbScroll(object sender, RoutedEventArgs e)
+    {
+        // Long screenshot needs a window to scroll: the clicked window, or
+        // the one under the selection's center.
+        var hwnd = _selHwnd;
+        if (hwnd == IntPtr.Zero)
+        {
+            var center = new DrawingPoint(
+                _selection.X + _selection.Width / 2, _selection.Y + _selection.Height / 2);
+            hwnd = _windows.FirstOrDefault(w => w.Bounds.Contains(center))?.Hwnd ?? IntPtr.Zero;
+        }
+        Confirm(_selection, hwnd, OverlayAction.Scroll);
+    }
+
+    private void OnTbWatermark(object sender, RoutedEventArgs e)
+    {
+        _wmEnabled = !_wmEnabled;
+        _wmDirty = true;
+        UpdateWmButtonLook();
+        UpdateVisuals();
+        if (_wmEnabled) WmText.Focus();
+    }
+
+    private void UpdateWmButtonLook() =>
+        TbWatermark.Foreground = new SolidColorBrush(_wmEnabled
+            ? System.Windows.Media.Color.FromRgb(0x2E, 0x90, 0xFA)
+            : System.Windows.Media.Color.FromArgb(0xDD, 0x33, 0x33, 0x33));
+
+    private WatermarkPosition CurrentWmPosition() =>
+        WatermarkLayout.ParsePosition((WmPos.SelectedItem as ComboBoxItem)?.Tag as string);
+
+    private void PersistWatermark()
+    {
+        if (!_wmDirty) return;
+        try
+        {
+            var wm = AppActions.Settings.Watermark;
+            wm.Enabled = _wmEnabled;
+            wm.Text = WmText.Text.Trim();
+            wm.Position = CurrentWmPosition().ToString();
+            SettingsStore.Save(AppActions.Settings, AppPaths.SettingsFile);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Watermark settings save failed", ex);
+        }
+    }
+
     // ---- visuals ----
 
     private void UpdateVisuals()
@@ -284,10 +369,92 @@ public partial class OverlayWindow : Window
                 Toolbar.DesiredSize.Width, Toolbar.DesiredSize.Height, canvasW, canvasH);
             System.Windows.Controls.Canvas.SetLeft(Toolbar, pos.X);
             System.Windows.Controls.Canvas.SetTop(Toolbar, pos.Y);
+            PlaceWmBar(pos.X, pos.Y, canvasW, canvasH);
+            UpdateWmPreview(x, y, w, h);
         }
         else
         {
             Toolbar.Visibility = Visibility.Collapsed;
+            WmBar.Visibility = Visibility.Collapsed;
+            WmPreview.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void PlaceWmBar(double toolbarX, double toolbarY, double canvasW, double canvasH)
+    {
+        if (!_wmEnabled)
+        {
+            WmBar.Visibility = Visibility.Collapsed;
+            return;
+        }
+        WmBar.Visibility = Visibility.Visible;
+        WmBar.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        var wy = toolbarY + Toolbar.DesiredSize.Height + 6;
+        if (wy + WmBar.DesiredSize.Height > canvasH)
+            wy = toolbarY - 6 - WmBar.DesiredSize.Height;
+        var wx = Math.Max(8, Math.Min(toolbarX, canvasW - WmBar.DesiredSize.Width - 8));
+        System.Windows.Controls.Canvas.SetLeft(WmBar, wx);
+        System.Windows.Controls.Canvas.SetTop(WmBar, wy);
+    }
+
+    private void UpdateWmPreview(double x, double y, double w, double h)
+    {
+        WmPreview.Children.Clear();
+        var text = WmText.Text.Trim();
+        if (!_wmEnabled || text.Length == 0 || w < 4 || h < 4)
+        {
+            WmPreview.Visibility = Visibility.Collapsed;
+            return;
+        }
+        WmPreview.Visibility = Visibility.Visible;
+        WmPreview.Clip = new RectangleGeometry(new Rect(x, y, w, h));
+
+        var opts = AppActions.Settings.Watermark;
+        var fontPx = opts.FontSize > 0 ? opts.FontSize : WatermarkLayout.AutoFontSize((int)(w * _scale));
+        var fontDip = fontPx / _scale;
+        var dc = WatermarkRenderer.ParseColor(opts.ColorHex);
+        var alpha = (byte)(Math.Clamp(opts.Opacity, 0, 100) * 255 / 100);
+        var brush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(alpha, dc.R, dc.G, dc.B));
+        brush.Freeze();
+        var family = new System.Windows.Media.FontFamily("Microsoft YaHei");
+
+        TextBlock Make() => new()
+        {
+            Text = text,
+            FontFamily = family,
+            FontWeight = FontWeights.Bold,
+            FontSize = fontDip,
+            Foreground = brush,
+        };
+
+        var probe = Make();
+        probe.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        var tw = (float)Math.Max(1, probe.DesiredSize.Width);
+        var th = (float)Math.Max(1, probe.DesiredSize.Height);
+
+        var pos = CurrentWmPosition();
+        if (pos == WatermarkPosition.Tile)
+        {
+            var stepX = Math.Max(24f, tw * WatermarkRenderer.TileStepXFactor);
+            var stepY = Math.Max(24f, th * WatermarkRenderer.TileStepYFactor);
+            var count = 0;
+            foreach (var (px, py) in WatermarkLayout.Tile((int)w, (int)h, stepX, stepY))
+            {
+                if (++count > 300) break;
+                var tb = Make();
+                tb.RenderTransform = new RotateTransform(WatermarkRenderer.TileAngle);
+                System.Windows.Controls.Canvas.SetLeft(tb, x + px);
+                System.Windows.Controls.Canvas.SetTop(tb, y + py);
+                WmPreview.Children.Add(tb);
+            }
+        }
+        else
+        {
+            var (ax, ay) = WatermarkLayout.Anchor((int)w, (int)h, tw, th, pos);
+            var tb = Make();
+            System.Windows.Controls.Canvas.SetLeft(tb, x + ax);
+            System.Windows.Controls.Canvas.SetTop(tb, y + ay);
+            WmPreview.Children.Add(tb);
         }
     }
 
@@ -341,6 +508,20 @@ public partial class OverlayWindow : Window
          System.Windows.Controls.Canvas.GetLeft(Toolbar),
          System.Windows.Controls.Canvas.GetTop(Toolbar),
          Toolbar.DesiredSize.Width, Toolbar.DesiredSize.Height);
+
+    public void DriverSetWatermark(string text, string position)
+    {
+        _wmEnabled = true;
+        WmText.Text = text;
+        for (var i = 0; i < WmPos.Items.Count; i++)
+            if ((WmPos.Items[i] as ComboBoxItem)?.Tag as string == position) { WmPos.SelectedIndex = i; break; }
+        _wmDirty = false; // driver runs must not touch the user's settings file
+        UpdateWmButtonLook();
+        UpdateVisuals();
+    }
+
+    public (bool BarVisible, int PreviewCount) DriverWatermarkState() =>
+        (WmBar.Visibility == Visibility.Visible, WmPreview.Children.Count);
 
     private void LayoutHints()
     {

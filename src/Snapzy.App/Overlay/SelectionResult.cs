@@ -9,6 +9,7 @@ public enum OverlayAction
     Annotate,  // open the annotation editor
     Ocr,       // copy recognized text, no file saved
     Record,    // start recording the selected region
+    Scroll,    // long screenshot: scroll-capture the window under the selection
 }
 
 public class SelectionResult

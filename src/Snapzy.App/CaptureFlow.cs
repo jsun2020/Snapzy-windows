@@ -44,6 +44,11 @@ public static class CaptureFlow
                 AppActions.StartRecordingFromOverlay(sel);
                 return null;
             }
+            if (sel.Action == OverlayAction.Scroll)
+            {
+                AppActions.ScrollCaptureWindow(sel.Hwnd);
+                return null;
+            }
 
             // Let the overlay leave the screen before capturing, or its dim
             // layer would appear in the shot.
@@ -74,8 +79,11 @@ public static class CaptureFlow
         }
     }
 
-    private static HistoryEntry SaveAndIndex(System.Drawing.Bitmap bmp, AppSettings settings, HistoryStore history)
+    internal static HistoryEntry SaveAndIndex(System.Drawing.Bitmap bmp, AppSettings settings, HistoryStore history)
     {
+        // Single chokepoint: every screenshot (area, fullscreen, scrolling)
+        // gets the watermark here while it is enabled.
+        Snapzy.Core.Editing.WatermarkRenderer.Apply(bmp, settings.Watermark);
         var name = FileNamer.NewCaptureName(DateTime.Now, settings.ImageFormat);
         var path = Path.Combine(AppPaths.CapturesDir, name);
         ImageSaver.Save(bmp, path, settings.ImageFormat, AppPaths.FfmpegExe);
@@ -84,7 +92,7 @@ public static class CaptureFlow
         return entry;
     }
 
-    private static void RunPostActions(HistoryEntry entry, HistoryStore history, AppSettings settings, bool forceAnnotate)
+    internal static void RunPostActions(HistoryEntry entry, HistoryStore history, AppSettings settings, bool forceAnnotate)
     {
         var path = history.GetFullPath(entry);
         var opts = settings.Screenshot;
