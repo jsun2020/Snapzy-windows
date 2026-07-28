@@ -28,21 +28,34 @@ public partial class OverlayWindow : Window
 
     private SelectionResult? _result;
     private bool _windowMode;
+    private readonly bool _showToolbar;
     private bool _dragging;
     private bool _hasSelection;
     private DrawingPoint _dragStart;             // physical
     private DrawingRectangle _selection;         // physical
+    private IntPtr _selHwnd = IntPtr.Zero;       // set when the selection came from a window click
     private WindowInfo? _hoverWindow;
 
-    private OverlayWindow(bool startInWindowMode)
+    private OverlayWindow(bool startInWindowMode, bool showToolbar)
     {
         InitializeComponent();
         // A CJK IME would otherwise eat the plain-letter shortcuts (A).
         InputMethod.SetIsInputMethodEnabled(this, false);
         _windowMode = startInWindowMode;
+        _showToolbar = showToolbar;
         _virtualScreen = System.Windows.Forms.SystemInformation.VirtualScreen;
         _windows = WindowEnumerator.GetTopLevelWindows();
         HintsText.Text = Strings.Get("Overlay_Hints");
+        TbAnnotate.ToolTip = Strings.Get("Overlay_ToolAnnotate");
+        TbOcr.ToolTip = Strings.Get("Overlay_ToolOcr");
+        TbRecord.ToolTip = Strings.Get("Overlay_ToolRecord");
+        TbConfirm.ToolTip = Strings.Get("Overlay_ToolConfirm");
+        TbCancel.ToolTip = Strings.Get("Overlay_ToolCancel");
+        TbOcr.Visibility = Snapzy.Core.Ocr.OcrService.IsAvailable
+            ? Visibility.Visible : Visibility.Collapsed;
+        // Clicks on the toolbar chrome must not start a new drag selection.
+        Toolbar.MouseDown += (_, e) => e.Handled = true;
+        Toolbar.MouseUp += (_, e) => e.Handled = true;
 
         SourceInitialized += (_, _) =>
         {
@@ -74,9 +87,9 @@ public partial class OverlayWindow : Window
         PreviewKeyDown += OnKeyDown;
     }
 
-    public static SelectionResult? ShowAndSelect(bool startInWindowMode = false)
+    public static SelectionResult? ShowAndSelect(bool startInWindowMode = false, bool showToolbar = false)
     {
-        var w = new OverlayWindow(startInWindowMode);
+        var w = new OverlayWindow(startInWindowMode, showToolbar);
         w.ShowDialog();
         return w._result;
     }
@@ -96,10 +109,11 @@ public partial class OverlayWindow : Window
         if (e.ChangedButton != MouseButton.Left) return;
         if (e.ClickCount == 2 && _hasSelection)
         {
-            Confirm(_selection, IntPtr.Zero);
+            Confirm(_selection, _selHwnd);
             return;
         }
         _dragging = true;
+        _selHwnd = IntPtr.Zero;
         _dragStart = CursorPhysical();
     }
 
@@ -140,6 +154,16 @@ public partial class OverlayWindow : Window
             var win = _windows.FirstOrDefault(w => w.Bounds.Contains(cur));
             if (win is not null)
             {
+                if (_showToolbar)
+                {
+                    // Mouse-first flow: keep the window selected and let the
+                    // floating toolbar decide what happens next.
+                    _selection = win.Bounds;
+                    _selHwnd = win.Hwnd;
+                    _hasSelection = true;
+                    UpdateVisuals();
+                    return;
+                }
                 Confirm(win.Bounds, win.Hwnd);
                 return;
             }
@@ -163,7 +187,7 @@ public partial class OverlayWindow : Window
                 Close();
                 break;
             case Key.Enter:
-                if (_hasSelection) Confirm(_selection, IntPtr.Zero);
+                if (_hasSelection) Confirm(_selection, _selHwnd);
                 else if (_windowMode && _hoverWindow is not null) Confirm(_hoverWindow.Bounds, _hoverWindow.Hwnd);
                 break;
             case Key.A:
@@ -197,13 +221,21 @@ public partial class OverlayWindow : Window
         UpdateVisuals();
     }
 
-    private void Confirm(DrawingRectangle rect, IntPtr hwnd)
+    private void Confirm(DrawingRectangle rect, IntPtr hwnd, OverlayAction action = OverlayAction.Confirm)
     {
         rect.Intersect(_virtualScreen);
         if (rect.Width < 1 || rect.Height < 1) { _result = null; Close(); return; }
-        _result = new SelectionResult { Rect = rect, Hwnd = hwnd };
+        _result = new SelectionResult { Rect = rect, Hwnd = hwnd, Action = action };
         Close();
     }
+
+    // ---- floating toolbar ----
+
+    private void OnTbConfirm(object sender, RoutedEventArgs e) => Confirm(_selection, _selHwnd);
+    private void OnTbAnnotate(object sender, RoutedEventArgs e) => Confirm(_selection, _selHwnd, OverlayAction.Annotate);
+    private void OnTbOcr(object sender, RoutedEventArgs e) => Confirm(_selection, _selHwnd, OverlayAction.Ocr);
+    private void OnTbRecord(object sender, RoutedEventArgs e) => Confirm(_selection, _selHwnd, OverlayAction.Record);
+    private void OnTbCancel(object sender, RoutedEventArgs e) { _result = null; Close(); }
 
     // ---- visuals ----
 
@@ -243,6 +275,20 @@ public partial class OverlayWindow : Window
             Handles.Visibility = Visibility.Collapsed;
             Hud.Visibility = Visibility.Collapsed;
         }
+
+        if (_showToolbar && _hasSelection && !_dragging && w > 0 && h > 0)
+        {
+            Toolbar.Visibility = Visibility.Visible;
+            Toolbar.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            var pos = ToolbarPlacement.Place(x, y, w, h,
+                Toolbar.DesiredSize.Width, Toolbar.DesiredSize.Height, canvasW, canvasH);
+            System.Windows.Controls.Canvas.SetLeft(Toolbar, pos.X);
+            System.Windows.Controls.Canvas.SetTop(Toolbar, pos.Y);
+        }
+        else
+        {
+            Toolbar.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void DrawHandles(double x, double y, double w, double h)
@@ -277,6 +323,24 @@ public partial class OverlayWindow : Window
         r.Width = Math.Max(0, w);
         r.Height = Math.Max(0, h);
     }
+
+    // ---- E2E driver hooks (no interactive input available in the test harness) ----
+
+    public static OverlayWindow CreateForDriver(bool showToolbar) => new(false, showToolbar);
+
+    public void DriverSelect(int x, int y, int w, int h)
+    {
+        _selection = new DrawingRectangle(x, y, w, h);
+        _hasSelection = true;
+        _dragging = false;
+        UpdateVisuals();
+    }
+
+    public (bool Visible, double X, double Y, double W, double H) DriverToolbarState() =>
+        (Toolbar.Visibility == Visibility.Visible,
+         System.Windows.Controls.Canvas.GetLeft(Toolbar),
+         System.Windows.Controls.Canvas.GetTop(Toolbar),
+         Toolbar.DesiredSize.Width, Toolbar.DesiredSize.Height);
 
     private void LayoutHints()
     {

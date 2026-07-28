@@ -34,8 +34,16 @@ public static class CaptureFlow
     {
         try
         {
-            var sel = OverlayWindow.ShowAndSelect();
+            // The floating toolbar only appears in the general capture flow;
+            // the annotate hotkey already knows its destination.
+            var sel = OverlayWindow.ShowAndSelect(showToolbar: !forceAnnotate);
             if (sel is null) return null;
+
+            if (sel.Action == OverlayAction.Record)
+            {
+                AppActions.StartRecordingFromOverlay(sel);
+                return null;
+            }
 
             // Let the overlay leave the screen before capturing, or its dim
             // layer would appear in the shot.
@@ -43,12 +51,21 @@ public static class CaptureFlow
                 () => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             Thread.Sleep(120);
 
-            using var bmp = sel.Hwnd != IntPtr.Zero
+            var bmp = sel.Hwnd != IntPtr.Zero
                 ? ScreenCapture.CaptureWindow(sel.Hwnd)
                 : ScreenCapture.CaptureRect(sel.Rect);
-            var entry = SaveAndIndex(bmp, settings, history);
-            RunPostActions(entry, history, settings, forceAnnotate);
-            return entry;
+            if (sel.Action == OverlayAction.Ocr)
+            {
+                AppActions.OcrAndCopy(bmp); // takes ownership; nothing is saved
+                return null;
+            }
+            using (bmp)
+            {
+                var entry = SaveAndIndex(bmp, settings, history);
+                RunPostActions(entry, history, settings,
+                    forceAnnotate || sel.Action == OverlayAction.Annotate);
+                return entry;
+            }
         }
         catch (Exception ex)
         {

@@ -11,6 +11,32 @@
         Cursor="Cross"
         Focusable="True"
         ShowActivated="True">
+    <Window.Resources>
+        <Style x:Key="TbBtn" TargetType="Button">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#DD333333" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#14000000" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#24000000" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Canvas x:Name="Root">
         <Rectangle x:Name="DimTop" Fill="#66000000" />
         <Rectangle x:Name="DimBottom" Fill="#66000000" />
@@ -20,6 +46,30 @@
         <Canvas x:Name="Handles" Visibility="Collapsed" />
         <Border x:Name="Hud" Background="#CC202020" CornerRadius="4" Padding="8,4" Visibility="Collapsed">
             <TextBlock x:Name="HudText" Foreground="White" FontSize="12" FontFamily="Consolas" />
+        </Border>
+        <Border x:Name="Toolbar" Background="#F8FFFFFF" CornerRadius="6" Padding="4,3"
+                Visibility="Collapsed" Cursor="Arrow">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.35" />
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="TbAnnotate" Style="{StaticResource TbBtn}" Click="OnTbAnnotate">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE70F;" />
+                </Button>
+                <Button x:Name="TbOcr" Style="{StaticResource TbBtn}" Click="OnTbOcr">
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Text="OCR" />
+                </Button>
+                <Button x:Name="TbRecord" Style="{StaticResource TbBtn}" Click="OnTbRecord">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE714;" />
+                </Button>
+                <Border Width="1" Height="20" Background="#22000000" Margin="4,0" />
+                <Button x:Name="TbCancel" Style="{StaticResource TbBtn}" Click="OnTbCancel" Foreground="#DDC62828">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="14" Text="&#xE711;" />
+                </Button>
+                <Button x:Name="TbConfirm" Style="{StaticResource TbBtn}" Click="OnTbConfirm" Foreground="#DD2E7D32">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Text="&#xE73E;" />
+                </Button>
+            </StackPanel>
         </Border>
         <Border x:Name="HintsBar" Background="#CC202020" CornerRadius="4" Padding="12,6">
             <TextBlock x:Name="HintsText" Foreground="#DDFFFFFF" FontSize="12" />

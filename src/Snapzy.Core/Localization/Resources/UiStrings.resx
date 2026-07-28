@@ -58,7 +58,25 @@
     <value>Snapzy is running in the tray. Ctrl+Shift+4 captures an area.</value>
   </data>
   <data name="Overlay_Hints" xml:space="preserve">
-    <value>Drag to select - A: window mode - Enter: confirm - Esc: cancel</value>
+    <value>Drag to select, release for tools - A: window mode - Enter: confirm - Esc: cancel</value>
+  </data>
+  <data name="Overlay_ToolAnnotate" xml:space="preserve">
+    <value>Annotate</value>
+  </data>
+  <data name="Overlay_ToolOcr" xml:space="preserve">
+    <value>Copy text (OCR)</value>
+  </data>
+  <data name="Overlay_ToolRecord" xml:space="preserve">
+    <value>Record this area</value>
+  </data>
+  <data name="Overlay_ToolConfirm" xml:space="preserve">
+    <value>Confirm (save and copy)</value>
+  </data>
+  <data name="Overlay_ToolCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Toast_AlreadyRecording" xml:space="preserve">
+    <value>Already recording - stop the current recording first</value>
   </data>
   <data name="QA_Copy" xml:space="preserve">
     <value>Copy</value>

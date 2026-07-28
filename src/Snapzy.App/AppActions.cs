@@ -31,7 +31,7 @@ public static class AppActions
     public static void CaptureArea() => CaptureFlow.RunArea(Settings, History, forceAnnotate: false);
     public static void CaptureAreaAnnotate() => CaptureFlow.RunArea(Settings, History, forceAnnotate: true);
 
-    public static async void CaptureOcr()
+    public static void CaptureOcr()
     {
         try
         {
@@ -45,10 +45,30 @@ public static class AppActions
             System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
                 () => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             Thread.Sleep(120);
-            using var bmp = sel.Hwnd != IntPtr.Zero
+            var bmp = sel.Hwnd != IntPtr.Zero
                 ? Snapzy.Core.Capture.ScreenCapture.CaptureWindow(sel.Hwnd)
                 : Snapzy.Core.Capture.ScreenCapture.CaptureRect(sel.Rect);
-            var ocr = await Snapzy.Core.Ocr.OcrService.RecognizeForClipboardAsync(bmp);
+            OcrAndCopy(bmp);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("CaptureOcr failed", ex);
+            Tray?.Balloon("Snapzy", Strings.Get("Toast_CaptureFailed"));
+        }
+    }
+
+    /// <summary>Recognizes text in the bitmap and copies it. Takes ownership of the bitmap.</summary>
+    internal static async void OcrAndCopy(System.Drawing.Bitmap bmp)
+    {
+        try
+        {
+            using var owned = bmp;
+            if (!Snapzy.Core.Ocr.OcrService.IsAvailable)
+            {
+                Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrUnavailable"));
+                return;
+            }
+            var ocr = await Snapzy.Core.Ocr.OcrService.RecognizeForClipboardAsync(owned);
             if (string.IsNullOrWhiteSpace(ocr.Text))
             {
                 Tray?.Balloon("Snapzy", Strings.Get("Toast_OcrEmpty"));
@@ -62,7 +82,7 @@ public static class AppActions
         }
         catch (Exception ex)
         {
-            Log.Error("CaptureOcr failed", ex);
+            Log.Error("OcrAndCopy failed", ex);
             Tray?.Balloon("Snapzy", Strings.Get("Toast_CaptureFailed"));
         }
     }
@@ -126,13 +146,31 @@ public static class AppActions
                 await StopRecordingAsync();
                 return;
             }
+            var sel = Overlay.OverlayWindow.ShowAndSelect();
+            if (sel is null) return;
+            StartRecordingFromOverlay(sel);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("ToggleRecording failed", ex);
+        }
+    }
+
+    /// <summary>Starts a recording for an already-made overlay selection.</summary>
+    internal static async void StartRecordingFromOverlay(Overlay.SelectionResult sel)
+    {
+        try
+        {
+            if (_recorder is not null && _recorder.State != RecordingState.Idle)
+            {
+                Tray?.Balloon("Snapzy", Strings.Get("Toast_AlreadyRecording"));
+                return;
+            }
             if (!File.Exists(AppPaths.FfmpegExe))
             {
                 Tray?.Balloon("Snapzy", Strings.Get("Toast_FfmpegMissing"));
                 return;
             }
-            var sel = Overlay.OverlayWindow.ShowAndSelect();
-            if (sel is null) return;
 
             var opts = new RecordingOptions
             {
@@ -160,7 +198,7 @@ public static class AppActions
         }
         catch (Exception ex)
         {
-            Log.Error("ToggleRecording failed", ex);
+            Log.Error("StartRecordingFromOverlay failed", ex);
         }
     }
 
