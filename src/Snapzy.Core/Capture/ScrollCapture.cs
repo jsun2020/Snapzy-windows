@@ -29,6 +29,8 @@ public static class ScrollCapture
     [DllImport("user32.dll")] private static extern bool BringWindowToTop(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern IntPtr RealChildWindowFromPoint(IntPtr parent, POINT point);
     [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(POINT point);
+    [DllImport("user32.dll")] private static extern bool GetCursorPos(out POINT point);
+    [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     private const int SM_CXVSCROLL = 2;
@@ -65,6 +67,8 @@ public static class ScrollCapture
         Func<bool>? isCancelled = null, int maxSteps = 60)
     {
         var result = new ScrollCaptureResult();
+        var cursorParked = false;
+        POINT savedCursor = default;
         try
         {
             ForceForeground(hwnd);
@@ -84,6 +88,18 @@ public static class ScrollCapture
             // detection (and look bad repeated in the stitch).
             var vscroll = GetSystemMetrics(SM_CXVSCROLL) + 2;
             if (clientRect.Width > vscroll * 4) clientRect.Width -= vscroll;
+
+            // Software cursor-highlighter overlays (locate-pointer halos,
+            // presentation pointers) are drawn into the screen pixels and
+            // follow the cursor; resting inside the scrolled content they
+            // corrupt every captured frame. Park the cursor at the window's
+            // top-right corner for the duration of the capture.
+            if (GetCursorPos(out savedCursor))
+            {
+                cursorParked = true;
+                SetCursorPos(clientRect.Right - 4, clientRect.Y + 4);
+                Thread.Sleep(150); // let hover effects/overlays settle before frame 1
+            }
 
             var centerX = clientRect.X + clientRect.Width / 2;
             var centerY = clientRect.Y + clientRect.Height / 2;
@@ -170,6 +186,10 @@ public static class ScrollCapture
             Log.Error("Scroll capture failed", ex);
             result.Error = ex.Message;
             return result;
+        }
+        finally
+        {
+            if (cursorParked) SetCursorPos(savedCursor.X, savedCursor.Y);
         }
     }
 }

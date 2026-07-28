@@ -71,6 +71,37 @@ public class ImageStitcherTests
     }
 
     [Fact]
+    public void FindOverlap_ToleratesLocalizedOverlayInOneBand()
+    {
+        // A software cursor halo (locate-pointer overlay) sits in the right
+        // third of the next frame, right where prev's probe strip lands after
+        // the scroll. 2-of-3 band majority must still find the overlap.
+        using var prev = View(0, 90, 200);
+        using var next = View(120, 90, 200);
+        for (var y = 60; y < 100; y++)             // overlap region rows
+            for (var x = 65; x < 85; x++)          // inside the right band only
+                next.SetPixel(x, y, Color.Magenta);
+        var m = ImageStitcher.FindOverlap(prev, next);
+        Assert.NotNull(m);
+        Assert.Equal(80, m.Value.NewContentOffset);
+    }
+
+    [Fact]
+    public void FindOverlap_AnimatedOverlayOnStaticPage_ReportsNoMovement()
+    {
+        // Page did not scroll; only an overlay changed in one band. Must be
+        // treated as "no movement", not "stitch lost".
+        using var prev = View(0, 90, 200);
+        using var next = View(0, 90, 200);
+        for (var y = 90; y < 120; y++)
+            for (var x = 65; x < 85; x++)
+                next.SetPixel(x, y, Color.Magenta);
+        var m = ImageStitcher.FindOverlap(prev, next);
+        Assert.NotNull(m);
+        Assert.Equal(next.Height - m.Value.StaticBottomRows, m.Value.NewContentOffset);
+    }
+
+    [Fact]
     public void AppendNewRows_GrowsByNewContentAndTrimsFurniture()
     {
         using var prev = View(0, 40, 200, furnitureRows: 36);
