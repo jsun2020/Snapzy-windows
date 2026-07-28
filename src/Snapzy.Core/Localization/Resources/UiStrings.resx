@@ -87,6 +87,21 @@
   <data name="Annotate_SaveAs" xml:space="preserve">
     <value>Save As...</value>
   </data>
+  <data name="Annotate_AddImage" xml:space="preserve">
+    <value>Add Image...</value>
+  </data>
+  <data name="Annotate_PlaceHint" xml:space="preserve">
+    <value>Where should the image go?</value>
+  </data>
+  <data name="Annotate_PlaceRight" xml:space="preserve">
+    <value>Stitch right</value>
+  </data>
+  <data name="Annotate_PlaceBottom" xml:space="preserve">
+    <value>Stitch below</value>
+  </data>
+  <data name="Annotate_PlaceFloat" xml:space="preserve">
+    <value>Floating</value>
+  </data>
   <data name="Annotate_Copy" xml:space="preserve">
     <value>Copy</value>
   </data>

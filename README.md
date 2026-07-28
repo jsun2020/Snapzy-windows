@@ -35,6 +35,12 @@ In the annotation editor: `V` select, `R` rectangle, `O` ellipse, `L` line, `A` 
 `P` pen, `T` text, `B` blur, `X` pixelate, `N` counter, `C` crop; `Ctrl+Z`/`Ctrl+Y`
 undo/redo, `Ctrl+wheel` zoom, space-drag pan, `Ctrl+S` save, `Ctrl+C` copy.
 
+**Add Image / stitching (v1.4)**: the editor's **Add Image...** button inserts more
+screenshots onto the canvas - stitched to the right, stitched below (the canvas
+grows automatically), or floating on top. Inserted images can be moved with the
+Select tool and deleted; everything is undoable. Use it to build side-by-side
+comparison images; uncovered canvas area exports as white.
+
 ## Portability
 
 Everything lives beside `Snapzy.exe`:

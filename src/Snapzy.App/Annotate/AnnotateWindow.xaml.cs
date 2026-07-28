@@ -111,6 +111,9 @@ public partial class AnnotateWindow : Window
         img.Freeze();
         BaseImage.Source = img;
         // Exact 1:1 pixel reproduction in the export (no resampling drift).
+        // Stretch.Fill + Width/Height = pixel size keeps that true even for
+        // files whose DPI metadata is not 96 (Stretch.None would shrink them).
+        BaseImage.Stretch = Stretch.Fill;
         RenderOptions.SetBitmapScalingMode(BaseImage, BitmapScalingMode.NearestNeighbor);
         BaseImage.SnapsToDevicePixels = true;
         _imgW = img.PixelWidth;
@@ -138,6 +141,7 @@ public partial class AnnotateWindow : Window
             _toolButtons[tool] = btn;
             ToolButtons.Children.Add(btn);
         }
+        BtnAddImage.Content = Strings.Get("Annotate_AddImage");
         BtnCopy.Content = Strings.Get("Annotate_Copy");
         BtnSave.Content = Strings.Get("Annotate_Save");
         BtnSaveAs.Content = Strings.Get("Annotate_SaveAs");
@@ -624,7 +628,8 @@ public partial class AnnotateWindow : Window
         }
     }
 
-    private void OnUndo(object sender, RoutedEventArgs e) => _undo.Undo();
+    public void PerformUndo() => _undo.Undo();
+    private void OnUndo(object sender, RoutedEventArgs e) => PerformUndo();
     private void OnRedo(object sender, RoutedEventArgs e) => _undo.Redo();
 
     private void UpdateUndoButtons()
@@ -793,11 +798,150 @@ public partial class AnnotateWindow : Window
         public void Redo() { _w.ClearSelection(); _w.Anno.Children.Remove(_el); _w.RenumberBadges(); _w.MarkDirty(); }
     }
 
+    // ---------- add image / stitch ----------
+
+    private void OnAddImage(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Images|*.png;*.jpg;*.jpeg",
+            InitialDirectory = AppPaths.CapturesDir,
+            Multiselect = true,
+        };
+        if (dlg.ShowDialog() != true || dlg.FileNames.Length == 0) return;
+        if (PromptPlacement() is not { } placement) return;
+        try
+        {
+            InsertImages(dlg.FileNames, placement);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Add image failed", ex);
+            System.Windows.MessageBox.Show(this, ex.Message, "Snapzy", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private Snapzy.Core.Editing.StitchPlacement? PromptPlacement()
+    {
+        Snapzy.Core.Editing.StitchPlacement? result = null;
+        var win = new Window
+        {
+            Title = Strings.Get("Annotate_AddImage"),
+            Owner = this,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize,
+            Background = new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x30)),
+            ShowInTaskbar = false,
+        };
+        var panel = new StackPanel { Margin = new Thickness(16) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = Strings.Get("Annotate_PlaceHint"),
+            Foreground = Brushes.White,
+            Margin = new Thickness(0, 0, 0, 10),
+        });
+        foreach (var (key, mode) in new[]
+        {
+            ("Annotate_PlaceRight", Snapzy.Core.Editing.StitchPlacement.Right),
+            ("Annotate_PlaceBottom", Snapzy.Core.Editing.StitchPlacement.Bottom),
+            ("Annotate_PlaceFloat", Snapzy.Core.Editing.StitchPlacement.Float),
+        })
+        {
+            var b = new Button
+            {
+                Content = Strings.Get(key),
+                Margin = new Thickness(0, 2, 0, 2),
+                Padding = new Thickness(10, 5, 10, 5),
+                Foreground = Brushes.White,
+                Background = new SolidColorBrush(Color.FromRgb(0x3E, 0x3E, 0x42)),
+            };
+            b.Click += (_, _) => { result = mode; win.DialogResult = true; };
+            panel.Children.Add(b);
+        }
+        win.Content = panel;
+        win.ShowDialog();
+        return result;
+    }
+
+    public void InsertImages(string[] files, Snapzy.Core.Editing.StitchPlacement placement)
+    {
+        var cascade = 0;
+        foreach (var file in files)
+        {
+            var img = new BitmapImage();
+            img.BeginInit();
+            img.CacheOption = BitmapCacheOption.OnLoad;
+            img.UriSource = new Uri(file);
+            img.EndInit();
+            img.Freeze();
+
+            var offset = 24 + cascade * 32;
+            var place = Snapzy.Core.Editing.StitchLayout.Place(
+                _imgW, _imgH, img.PixelWidth, img.PixelHeight, placement, offset);
+            if (placement == Snapzy.Core.Editing.StitchPlacement.Float) cascade++;
+
+            // Stretch.Fill + explicit pixel size draws source pixels 1:1 into the
+            // 96dpi canvas even when the file carries non-96 DPI metadata
+            // (Stretch.None would draw it DPI-scaled and centered).
+            var el = new Image { Source = img, Width = img.PixelWidth, Height = img.PixelHeight, Stretch = Stretch.Fill };
+            RenderOptions.SetBitmapScalingMode(el, BitmapScalingMode.NearestNeighbor);
+            el.SnapsToDevicePixels = true;
+            Canvas.SetLeft(el, place.X);
+            Canvas.SetTop(el, place.Y);
+
+            var action = new InsertImageAction(this, el, _imgW, _imgH, place.NewWidth, place.NewHeight);
+            Anno.Children.Add(el);
+            ResizeCanvas(place.NewWidth, place.NewHeight);
+            _undo.Push(action);
+            MarkDirty();
+        }
+        FitToWindow();
+    }
+
+    internal void ResizeCanvas(int w, int h)
+    {
+        _imgW = w;
+        _imgH = h;
+        Anno.Width = w;
+        Anno.Height = h;
+        CanvasRoot.Width = w;
+        CanvasRoot.Height = h;
+    }
+
+    internal class InsertImageAction : IUndoable
+    {
+        private readonly AnnotateWindow _w;
+        private readonly UIElement _el;
+        private readonly int _oldW, _oldH, _newW, _newH;
+        public InsertImageAction(AnnotateWindow w, UIElement el, int oldW, int oldH, int newW, int newH)
+        { _w = w; _el = el; _oldW = oldW; _oldH = oldH; _newW = newW; _newH = newH; }
+        public void Undo()
+        {
+            _w.ClearSelection();
+            _w.Anno.Children.Remove(_el);
+            _w.ResizeCanvas(_oldW, _oldH);
+            _w.MarkDirty();
+        }
+        public void Redo()
+        {
+            _w.Anno.Children.Add(_el);
+            _w.ResizeCanvas(_newW, _newH);
+            _w.MarkDirty();
+        }
+    }
+
     // ---------- blur / pixelate ----------
 
     private void AddRegionEffect(Int32Rect region, bool pixelate)
     {
         var src = (BitmapSource)BaseImage.Source;
+        // The effect samples the base image only; on a stitched (grown) canvas the
+        // selection can extend beyond it - clamp, or CroppedBitmap throws.
+        var w = Math.Min(region.Width, src.PixelWidth - region.X);
+        var h = Math.Min(region.Height, src.PixelHeight - region.Y);
+        if (region.X >= src.PixelWidth || region.Y >= src.PixelHeight || w < 1 || h < 1) return;
+        region = new Int32Rect(region.X, region.Y, w, h);
         var crop = new CroppedBitmap(src, region);
         var img = new Image { Stretch = Stretch.Fill, Width = region.Width, Height = region.Height };
         if (pixelate)
@@ -894,7 +1038,7 @@ public partial class AnnotateWindow : Window
 
     // ---------- export ----------
 
-    internal BitmapSource RenderComposite()
+    public BitmapSource RenderComposite()
     {
         CancelPendingCrop();
         ClearSelection();

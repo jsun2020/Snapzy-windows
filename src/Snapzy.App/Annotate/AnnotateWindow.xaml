@@ -25,6 +25,7 @@
                     </Style>
                 </StackPanel.Resources>
                 <StackPanel x:Name="ToolButtons" Orientation="Horizontal" />
+                <Button x:Name="BtnAddImage" Click="OnAddImage" />
                 <Separator Margin="6,2" />
                 <Button x:Name="ColorButton" Click="OnPickColor">
                     <Rectangle x:Name="ColorSwatch" Width="16" Height="16" Fill="Red" />
@@ -42,7 +43,7 @@
         </Border>
         <ScrollViewer x:Name="Scroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                       Background="#FF1E1E1E" Focusable="False">
-            <Grid x:Name="CanvasRoot" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Grid x:Name="CanvasRoot" HorizontalAlignment="Left" VerticalAlignment="Top" Background="White">
                 <Grid.LayoutTransform>
                     <ScaleTransform x:Name="ZoomTransform" ScaleX="1" ScaleY="1" />
                 </Grid.LayoutTransform>
