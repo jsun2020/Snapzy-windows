@@ -142,9 +142,11 @@ tray menu, other windows use the new language when reopened).
 - Mixed-DPI multi-monitor setups: the selection overlay uses the primary monitor's
   scale for its visuals; captured pixels are always correct.
 - Theme setting affects Snapzy's own windows only.
-- Scrolling capture: requires the window to honor posted wheel messages; captures
-  content from the current scroll position downward; window chrome (scrollbars)
-  is trimmed automatically, sticky in-page headers are not.
+- Scrolling capture: requires the window to honor wheel messages (v1.7.1 targets
+  the innermost content view, which fixes Chromium browsers); captures content
+  from the current scroll position downward; window chrome (scrollbars) is
+  trimmed automatically, sticky in-page headers are not. On Windows 10 builds
+  before 2004 the progress toast may appear in the captured image.
 - OCR of very tall images is processed in 2000px slices with a 40px overlap; an
   occasional duplicated line at a slice boundary is possible.
 - Folder size is ~300 MB unpacked, dominated by the bundled full ffmpeg build

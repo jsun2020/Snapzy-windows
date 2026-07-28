@@ -22,9 +22,35 @@ public static class ScrollCapture
     [DllImport("user32.dll")] private static extern bool ClientToScreen(IntPtr hwnd, ref POINT point);
     [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+    [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint a, uint b, bool attach);
+    [DllImport("user32.dll")] private static extern bool BringWindowToTop(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern IntPtr RealChildWindowFromPoint(IntPtr parent, POINT point);
+    [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(POINT point);
+    [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     private const int SM_CXVSCROLL = 2;
+    private const uint GA_ROOT = 2;
+
+    /// <summary>
+    /// SetForegroundWindow silently fails without foreground rights, and a
+    /// background target ignores (or never receives) wheel messages. Fall back
+    /// to the AttachThreadInput dance when the plain call did not stick.
+    /// </summary>
+    private static void ForceForeground(IntPtr hwnd)
+    {
+        SetForegroundWindow(hwnd);
+        Thread.Sleep(120);
+        if (GetForegroundWindow() == hwnd) return;
+        var fgThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+        var myThread = GetCurrentThreadId();
+        AttachThreadInput(myThread, fgThread, true);
+        BringWindowToTop(hwnd);
+        SetForegroundWindow(hwnd);
+        AttachThreadInput(myThread, fgThread, false);
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT { public int X, Y; }
@@ -41,7 +67,7 @@ public static class ScrollCapture
         var result = new ScrollCaptureResult();
         try
         {
-            SetForegroundWindow(hwnd);
+            ForceForeground(hwnd);
             Thread.Sleep(250);
 
             if (!GetClientRect(hwnd, out var cr) || cr.Right - cr.Left < 8 || cr.Bottom - cr.Top < 8)
@@ -62,11 +88,22 @@ public static class ScrollCapture
             var centerX = clientRect.X + clientRect.Width / 2;
             var centerY = clientRect.Y + clientRect.Height / 2;
 
-            // Wheel messages are handled by the child control under the point
-            // (e.g. an Edit control), not necessarily the top-level window.
-            var centerClient = new POINT { X = (cr.Right - cr.Left) / 2, Y = (cr.Bottom - cr.Top) / 2 };
-            var wheelTarget = RealChildWindowFromPoint(hwnd, centerClient);
-            if (wheelTarget == IntPtr.Zero) wheelTarget = hwnd;
+            // Wheel messages must reach the child that actually hosts the
+            // scrolling content, which can be nested several levels deep.
+            // RealChildWindowFromPoint returns only a FIRST-level child; for
+            // Chromium browsers that is the "Intermediate D3D Window", which
+            // silently discards posted wheel messages (verified: only the
+            // deepest child, Chrome_RenderWidgetHostHWND, scrolls). The target
+            // is foreground here, so the deepest window at the client center
+            // belongs to it; guard via GA_ROOT and fall back to the old chain.
+            var centerPt = new POINT { X = centerX, Y = centerY };
+            var wheelTarget = WindowFromPoint(centerPt);
+            if (wheelTarget == IntPtr.Zero || GetAncestor(wheelTarget, GA_ROOT) != hwnd)
+            {
+                var centerClient = new POINT { X = (cr.Right - cr.Left) / 2, Y = (cr.Bottom - cr.Top) / 2 };
+                wheelTarget = RealChildWindowFromPoint(hwnd, centerClient);
+                if (wheelTarget == IntPtr.Zero) wheelTarget = hwnd;
+            }
 
             Bitmap accumulated = ScreenCapture.CaptureRect(clientRect);
             var prev = (Bitmap)accumulated.Clone();

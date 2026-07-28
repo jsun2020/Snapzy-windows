@@ -81,6 +81,9 @@
   <data name="Overlay_ToolScroll" xml:space="preserve">
     <value>长截图（滚动窗口）</value>
   </data>
+  <data name="Toast_ScrollNoMove" xml:space="preserve">
+    <value>窗口未滚动，仅保存了单屏截图</value>
+  </data>
   <data name="Overlay_ToolWatermark" xml:space="preserve">
     <value>水印</value>
   </data>

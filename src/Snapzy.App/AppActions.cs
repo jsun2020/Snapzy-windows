@@ -121,6 +121,8 @@ public static class AppActions
             using var bmp = result.Image;
             var entry = CaptureFlow.SaveAndIndex(bmp, Settings, History);
             Log.Info($"Scroll capture: {result.Steps} steps");
+            if (result.Steps == 0)
+                Tray?.Balloon("Snapzy", Strings.Get("Toast_ScrollNoMove"));
             CaptureFlow.RunPostActions(entry, History, Settings, forceAnnotate: false);
         }
         catch (Exception ex)

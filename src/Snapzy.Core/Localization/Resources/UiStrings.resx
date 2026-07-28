@@ -81,6 +81,9 @@
   <data name="Overlay_ToolScroll" xml:space="preserve">
     <value>Long screenshot (scrolls the window)</value>
   </data>
+  <data name="Toast_ScrollNoMove" xml:space="preserve">
+    <value>The window did not scroll - saved a single screen</value>
+  </data>
   <data name="Overlay_ToolWatermark" xml:space="preserve">
     <value>Watermark</value>
   </data>
