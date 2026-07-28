@@ -35,6 +35,10 @@ In the annotation editor: `V` select, `R` rectangle, `O` ellipse, `L` line, `A` 
 `P` pen, `T` text, `B` blur, `X` pixelate, `N` counter, `C` crop; `Ctrl+Z`/`Ctrl+Y`
 undo/redo, `Ctrl+wheel` zoom, space-drag pan, `Ctrl+S` save, `Ctrl+C` copy.
 
+Line width (which also scales annotation text size) can be typed freely
+(1-64) in the width box, and the color popup's **Custom...** opens the full
+system color picker (v1.5).
+
 **Add Image / stitching (v1.4)**: the editor's **Add Image...** button inserts more
 screenshots onto the canvas - stitched to the right, stitched below (the canvas
 grows automatically), or floating on top. Inserted images can be moved with the

@@ -90,6 +90,9 @@
   <data name="Annotate_AddImage" xml:space="preserve">
     <value>Add Image...</value>
   </data>
+  <data name="Color_Custom" xml:space="preserve">
+    <value>Custom...</value>
+  </data>
   <data name="Annotate_PlaceHint" xml:space="preserve">
     <value>Where should the image go?</value>
   </data>

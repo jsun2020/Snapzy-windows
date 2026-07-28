@@ -90,6 +90,9 @@
   <data name="Annotate_AddImage" xml:space="preserve">
     <value>添加图片...</value>
   </data>
+  <data name="Color_Custom" xml:space="preserve">
+    <value>自定义...</value>
+  </data>
   <data name="Annotate_PlaceHint" xml:space="preserve">
     <value>图片放到哪里？</value>
   </data>

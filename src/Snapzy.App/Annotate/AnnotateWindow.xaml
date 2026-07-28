@@ -30,8 +30,8 @@
                 <Button x:Name="ColorButton" Click="OnPickColor">
                     <Rectangle x:Name="ColorSwatch" Width="16" Height="16" Fill="Red" />
                 </Button>
-                <ComboBox x:Name="WidthCombo" Width="52" VerticalAlignment="Center" Margin="2,0"
-                          SelectionChanged="OnWidthChanged" />
+                <ComboBox x:Name="WidthCombo" Width="58" VerticalAlignment="Center" Margin="2,0"
+                          IsEditable="True" SelectionChanged="OnWidthChanged" />
                 <Separator Margin="6,2" />
                 <Button x:Name="BtnUndo" Content="&#x21B6;" Click="OnUndo" FontSize="14" />
                 <Button x:Name="BtnRedo" Content="&#x21B7;" Click="OnRedo" FontSize="14" />

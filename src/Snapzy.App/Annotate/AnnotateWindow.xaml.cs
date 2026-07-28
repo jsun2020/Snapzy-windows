@@ -33,11 +33,18 @@ public partial class AnnotateWindow : Window
         Color.FromRgb(0xFB, 0x8C, 0x00), // orange
         Color.FromRgb(0xFD, 0xD8, 0x35), // yellow
         Color.FromRgb(0x43, 0xA0, 0x47), // green
+        Color.FromRgb(0x00, 0xAC, 0xC1), // cyan
         Color.FromRgb(0x1E, 0x88, 0xE5), // blue
         Color.FromRgb(0x8E, 0x24, 0xAA), // purple
+        Color.FromRgb(0xEC, 0x40, 0x7A), // pink
+        Color.FromRgb(0x79, 0x55, 0x48), // brown
+        Color.FromRgb(0x9E, 0x9E, 0x9E), // gray
         Color.FromRgb(0xFF, 0xFF, 0xFF), // white
         Color.FromRgb(0x21, 0x21, 0x21), // black
     };
+
+    // Custom-color slots of the system color dialog, kept for the app session.
+    private static int[] _customDialogColors = new int[16];
 
     private readonly string _imagePath;
     private readonly HistoryEntry? _entry;
@@ -146,8 +153,17 @@ public partial class AnnotateWindow : Window
         BtnSave.Content = Strings.Get("Annotate_Save");
         BtnSaveAs.Content = Strings.Get("Annotate_SaveAs");
 
-        foreach (var w in new[] { 2.0, 4.0, 6.0 }) WidthCombo.Items.Add(w);
+        foreach (var w in new[] { 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0 }) WidthCombo.Items.Add(w);
         WidthCombo.SelectedItem = _strokeWidth;
+        // Editable: any width 1-64 can be typed (also scales annotation text size)
+        WidthCombo.LostFocus += (_, _) => ApplyTypedWidth();
+        WidthCombo.PreviewKeyDown += (_, ke) =>
+        {
+            if (ke.Key != Key.Enter) return;
+            ApplyTypedWidth();
+            Focus();
+            ke.Handled = true;
+        };
 
         SelectTool(Tool.Arrow);
         UpdateUndoButtons();
@@ -595,7 +611,15 @@ public partial class AnnotateWindow : Window
             Placement = PlacementMode.Bottom,
             StaysOpen = false,
         };
-        var panel = new WrapPanel { Width = 4 * 26 + 8, Background = new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x30)) };
+        var panel = new StackPanel { Background = new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x30)) };
+        var swatches = new WrapPanel { Width = 4 * 26 + 8 };
+        void Apply(Color c)
+        {
+            _color = c;
+            ColorSwatch.Fill = new SolidColorBrush(c);
+            RememberToolStyle();
+            popup.IsOpen = false;
+        }
         foreach (var c in Palette)
         {
             var b = new Button
@@ -606,15 +630,32 @@ public partial class AnnotateWindow : Window
                 Background = new SolidColorBrush(c),
                 BorderBrush = System.Windows.Media.Brushes.Gray,
             };
-            b.Click += (_, _) =>
-            {
-                _color = c;
-                ColorSwatch.Fill = new SolidColorBrush(c);
-                RememberToolStyle();
-                popup.IsOpen = false;
-            };
-            panel.Children.Add(b);
+            b.Click += (_, _) => Apply(c);
+            swatches.Children.Add(b);
         }
+        panel.Children.Add(swatches);
+        var custom = new Button
+        {
+            Content = Strings.Get("Color_Custom"),
+            Margin = new Thickness(2),
+            Padding = new Thickness(4, 2, 4, 2),
+            Foreground = Brushes.White,
+            Background = new SolidColorBrush(Color.FromRgb(0x3E, 0x3E, 0x42)),
+        };
+        custom.Click += (_, _) =>
+        {
+            popup.IsOpen = false;
+            using var dlg = new System.Windows.Forms.ColorDialog
+            {
+                FullOpen = true,
+                Color = System.Drawing.Color.FromArgb(_color.R, _color.G, _color.B),
+                CustomColors = _customDialogColors,
+            };
+            if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+            _customDialogColors = dlg.CustomColors;
+            Apply(Color.FromRgb(dlg.Color.R, dlg.Color.G, dlg.Color.B));
+        };
+        panel.Children.Add(custom);
         popup.Child = panel;
         popup.IsOpen = true;
     }
@@ -626,6 +667,16 @@ public partial class AnnotateWindow : Window
             _strokeWidth = w;
             RememberToolStyle();
         }
+    }
+
+    private void ApplyTypedWidth()
+    {
+        if (Snapzy.Core.Editing.StrokeWidthInput.TryParse(WidthCombo.Text, out var w))
+        {
+            _strokeWidth = w;
+            RememberToolStyle();
+        }
+        WidthCombo.Text = _strokeWidth.ToString(System.Globalization.CultureInfo.CurrentCulture);
     }
 
     public void PerformUndo() => _undo.Undo();
