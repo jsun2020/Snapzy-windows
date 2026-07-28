@@ -26,6 +26,7 @@ rights, no .NET runtime required.
 | Capture history | `Ctrl+Shift+H` |
 
 All hotkeys can be changed in Settings (tray menu -> Settings -> Hotkeys).
+The tray menu shows each action's current hotkey next to its label (v1.3).
 
 In the selection overlay: drag to select, `A` toggles window mode, click a window
 to snap to it, arrow keys nudge (Shift+arrows resize), `Enter` confirms, `Esc` cancels.

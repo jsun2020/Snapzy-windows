@@ -34,6 +34,32 @@ public class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void HotkeyHint_BoundAction_ReturnsGesture()
+    {
+        var s = AppSettings.CreateDefault();
+        Assert.Equal("Ctrl+Shift+4", s.HotkeyHint("CaptureArea"));
+    }
+
+    [Fact]
+    public void HotkeyHint_RemappedAction_ReturnsNewGesture()
+    {
+        var s = AppSettings.CreateDefault();
+        s.Hotkeys["CaptureArea"].Gesture = "Alt+1";
+        Assert.Equal("Alt+1", s.HotkeyHint("CaptureArea"));
+    }
+
+    [Fact]
+    public void HotkeyHint_DisabledBlankOrUnknown_ReturnsNull()
+    {
+        var s = AppSettings.CreateDefault();
+        s.Hotkeys["CaptureArea"].Enabled = false;
+        s.Hotkeys["OpenHistory"].Gesture = "  ";
+        Assert.Null(s.HotkeyHint("CaptureArea"));
+        Assert.Null(s.HotkeyHint("OpenHistory"));
+        Assert.Null(s.HotkeyHint("NoSuchAction"));
+    }
+
+    [Fact]
     public void Load_CorruptFile_ReturnsDefaultsAndBacksUp()
     {
         System.IO.File.WriteAllText(File, "{not json!!");

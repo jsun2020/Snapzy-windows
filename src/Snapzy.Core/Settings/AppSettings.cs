@@ -32,6 +32,11 @@ public class AppSettings
     public bool TrayLeftClickAreaCapture { get; set; } = true;
     public Dictionary<string, HotkeyBinding> Hotkeys { get; set; } = new();
 
+    /// <summary>Gesture to show as a menu hint for an action, or null when unbound/disabled.</summary>
+    public string? HotkeyHint(string action) =>
+        Hotkeys.TryGetValue(action, out var hk) && hk.Enabled && !string.IsNullOrWhiteSpace(hk.Gesture)
+            ? hk.Gesture : null;
+
     public static AppSettings CreateDefault() => new()
     {
         Hotkeys = new()

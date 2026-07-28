@@ -35,20 +35,28 @@ public sealed class TrayIcon : IDisposable
     public void RebuildMenu()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add(Strings.Get("Tray_CaptureArea"), null, (_, _) => AppActions.CaptureArea());
-        menu.Items.Add(Strings.Get("Tray_CaptureFullscreen"), null, (_, _) => AppActions.CaptureFullscreen());
-        menu.Items.Add(Strings.Get("Tray_CaptureAreaAnnotate"), null, (_, _) => AppActions.CaptureAreaAnnotate());
-        menu.Items.Add(Strings.Get("Tray_ScrollCapture"), null, (_, _) => AppActions.CaptureScrolling());
+        menu.Items.Add(Item("Tray_CaptureArea", "CaptureArea", (_, _) => AppActions.CaptureArea()));
+        menu.Items.Add(Item("Tray_CaptureFullscreen", "CaptureFullscreen", (_, _) => AppActions.CaptureFullscreen()));
+        menu.Items.Add(Item("Tray_CaptureAreaAnnotate", "CaptureAreaAnnotate", (_, _) => AppActions.CaptureAreaAnnotate()));
+        menu.Items.Add(Item("Tray_ScrollCapture", null, (_, _) => AppActions.CaptureScrolling()));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(Strings.Get(_recording ? "Tray_StopRecording" : "Tray_RecordScreen"), null, (_, _) => AppActions.ToggleRecording());
+        menu.Items.Add(Item(_recording ? "Tray_StopRecording" : "Tray_RecordScreen", "RecordToggle", (_, _) => AppActions.ToggleRecording()));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(Strings.Get("Tray_Annotate"), null, (_, _) => AppActions.OpenAnnotate(null));
-        menu.Items.Add(Strings.Get("Tray_History"), null, (_, _) => AppActions.OpenHistory());
-        menu.Items.Add(Strings.Get("Tray_Settings"), null, (_, _) => AppActions.OpenSettings());
+        menu.Items.Add(Item("Tray_Annotate", "OpenAnnotate", (_, _) => AppActions.OpenAnnotate(null)));
+        menu.Items.Add(Item("Tray_History", "OpenHistory", (_, _) => AppActions.OpenHistory()));
+        menu.Items.Add(Item("Tray_Settings", null, (_, _) => AppActions.OpenSettings()));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(Strings.Get("Tray_Quit"), null, (_, _) => AppActions.Quit());
+        menu.Items.Add(Item("Tray_Quit", null, (_, _) => AppActions.Quit()));
         _icon.ContextMenuStrip?.Dispose();
         _icon.ContextMenuStrip = menu;
+    }
+
+    private static ToolStripMenuItem Item(string labelKey, string? hotkeyAction, EventHandler onClick)
+    {
+        var item = new ToolStripMenuItem(Strings.Get(labelKey), null, onClick);
+        if (hotkeyAction is not null && AppActions.Settings.HotkeyHint(hotkeyAction) is { } gesture)
+            item.ShortcutKeyDisplayString = gesture;
+        return item;
     }
 
     public void Show() => _icon.Visible = true;
