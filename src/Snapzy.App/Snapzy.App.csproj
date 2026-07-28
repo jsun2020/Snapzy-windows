@@ -9,7 +9,11 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>Snapzy</AssemblyName>
-    <Version>1.2.4</Version>
+    <Version>1.2.5</Version>
+    <!-- CET shadow stacks (default on in .NET 9+) fail-fast the process (0xc0000409)
+         when the common file dialog loads a CET-incompatible shell extension
+         (e.g. .NET Framework based ones) on CET-capable CPUs - dotnet/wpf#10305. -->
+    <CETCompat>false</CETCompat>
     <InvariantGlobalization>false</InvariantGlobalization>
     <SatelliteResourceLanguages>en;zh-CN</SatelliteResourceLanguages>
     <ApplicationIcon>Assets\snapzy.ico</ApplicationIcon>

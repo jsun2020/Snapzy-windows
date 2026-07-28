@@ -39,6 +39,19 @@ public partial class App : System.Windows.Application
         };
         AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
             Log.Error("Fatal", ex.ExceptionObject as Exception);
+        // Tray menu clicks run through the WinForms message pump; their exceptions
+        // bypass DispatcherUnhandledException and would show the WinForms error
+        // dialog (or die) without ever reaching the log.
+        System.Windows.Forms.Application.ThreadException += (_, ex) =>
+        {
+            Log.Error("Unhandled (winforms)", ex.Exception);
+            ShowCrashDialog(ex.Exception);
+        };
+        TaskScheduler.UnobservedTaskException += (_, ex) =>
+        {
+            Log.Error("Unobserved task", ex.Exception);
+            ex.SetObserved();
+        };
 
         var settings = SettingsStore.Load(AppPaths.SettingsFile);
         Strings.SetLanguage(settings.Language);

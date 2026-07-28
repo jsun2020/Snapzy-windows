@@ -104,6 +104,11 @@ tray menu, other windows use the new language when reopened).
 
 ## Known limitations
 
+- CET shadow-stack enforcement is disabled for the Snapzy process (v1.2.5): with
+  it on (the .NET 9+ default), the Open/Save file dialog hard-crashes on
+  Windows 11 machines that have CET-incompatible shell extensions installed
+  (dotnet/wpf#10305). `publish.ps1` verifies the flag stays off.
+
 - Mixed-DPI multi-monitor setups: the selection overlay uses the primary monitor's
   scale for its visuals; captured pixels are always correct.
 - Theme setting affects Snapzy's own windows only.
