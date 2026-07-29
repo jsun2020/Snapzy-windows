@@ -6,24 +6,20 @@ using Snapzy.Core.Capture;
 // excludes the live-screen CaptureTests class) cannot swallow this class.
 public class ManualScrollSessionTests
 {
-    // Same deterministic scrolled-view model as ImageStitcherTests: each content
-    // row encodes its document row in the pixel color.
+    // Same deterministic scrolled-view model as ImageStitcherTests: each
+    // content row carries a unique horizontal texture for its document row.
     private static Bitmap View(int docStartRow, int width = 40, int height = 200, int furnitureRows = 0)
     {
         var bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
         for (var y = 0; y < height; y++)
         {
-            Color c;
-            if (y >= height - furnitureRows)
+            var furniture = y >= height - furnitureRows;
+            for (var x = 0; x < width; x++)
             {
-                c = Color.FromArgb(255, 50, 50, 50);
+                bmp.SetPixel(x, y, furniture
+                    ? Color.FromArgb(255, 50, 50, 50)
+                    : ImageStitcherTests.DocColor(docStartRow + y, x / 8));
             }
-            else
-            {
-                var doc = docStartRow + y;
-                c = Color.FromArgb(255, doc % 256, (doc / 256) % 256, (doc / 65536) % 256);
-            }
-            for (var x = 0; x < width; x++) bmp.SetPixel(x, y, c);
         }
         return bmp;
     }
@@ -104,12 +100,10 @@ public class ManualScrollSessionTests
         session.Tick(View(240));
         using var img = session.Detach();
         Assert.Equal(440, img.Height);
-        // Spot-check that every 40th row encodes its own document row.
+        // Spot-check that every 40th row carries its own document row's color.
         for (var y = 0; y < img.Height; y += 40)
         {
-            var p = img.GetPixel(0, y);
-            var doc = p.R + p.G * 256 + p.B * 65536;
-            Assert.Equal(y, doc);
+            Assert.Equal(ImageStitcherTests.DocColor(y, 0).ToArgb(), img.GetPixel(0, y).ToArgb());
         }
     }
 }

@@ -32,6 +32,7 @@ public sealed class ManualScrollCapture : IDisposable
 
     private Bitmap _accumulated;
     private Bitmap _lastAppended;
+    private Bitmap? _lastLost;
     private bool _furnitureTrimmed;
     private bool _disposed;
 
@@ -62,7 +63,8 @@ public sealed class ManualScrollCapture : IDisposable
         {
             State = TrackState.Lost;
             LostTicks++;
-            current.Dispose();
+            _lastLost?.Dispose();
+            _lastLost = current; // retained for diagnostics (TakeLastLostFrame)
             return;
         }
         var (offset, furniture) = match.Value;
@@ -92,6 +94,15 @@ public sealed class ManualScrollCapture : IDisposable
         State = TrackState.Tracking;
     }
 
+    /// <summary>The most recent frame that failed to overlap the stitch, for
+    /// diagnostics. Caller takes ownership; call BEFORE Detach/Dispose.</summary>
+    public Bitmap? TakeLastLostFrame()
+    {
+        var f = _lastLost;
+        _lastLost = null;
+        return f;
+    }
+
     /// <summary>Returns the stitched image; the caller takes ownership and the
     /// session must not be used afterwards (Dispose is then a no-op for it).</summary>
     public Bitmap Detach()
@@ -99,6 +110,8 @@ public sealed class ManualScrollCapture : IDisposable
         var img = _accumulated;
         _accumulated = null!;
         _lastAppended.Dispose();
+        _lastLost?.Dispose();
+        _lastLost = null;
         _disposed = true;
         return img;
     }
@@ -109,5 +122,6 @@ public sealed class ManualScrollCapture : IDisposable
         _disposed = true;
         _accumulated.Dispose();
         _lastAppended.Dispose();
+        _lastLost?.Dispose();
     }
 }

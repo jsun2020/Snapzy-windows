@@ -117,7 +117,8 @@ public static class AppActions
             Snapzy.Core.Capture.ScrollCapture.ForceForeground(hwnd);
             var panel = new Overlay.ScrollManualWindow();
             panel.Show();
-            Log.Info($"Manual scroll capture: area={area.Width}x{area.Height}");
+            Log.Info($"Manual scroll capture: target={Snapzy.Core.Capture.ScrollCapture.WindowClass(hwnd)} " +
+                     $"area={area.Width}x{area.Height}");
             var result = await Task.Run(() =>
             {
                 using var session = new Snapzy.Core.Capture.ManualScrollCapture(
@@ -143,6 +144,20 @@ public static class AppActions
                 }
                 Log.Info($"Manual scroll session: appends={session.StepsAppended} " +
                          $"noMove={session.NoMoveTicks} lost={session.LostTicks}");
+                if (session.StepsAppended == 0 && session.LostTicks > 10)
+                {
+                    // Nothing ever stitched: keep one non-overlapping frame on
+                    // disk so a field report shows what the matcher saw
+                    // (watermark, halo, RDP artifacts...). Fixed name; the
+                    // saved single-screen capture doubles as the "before".
+                    using var lostFrame = session.TakeLastLostFrame();
+                    if (lostFrame is not null)
+                    {
+                        var diag = Path.Combine(AppPaths.LogsDir, "scroll-lost-frame.png");
+                        lostFrame.Save(diag, System.Drawing.Imaging.ImageFormat.Png);
+                        Log.Info("Manual scroll: diagnostic lost frame saved to " + diag);
+                    }
+                }
                 if (panel.Cancelled) return ((System.Drawing.Bitmap, int)?)null;
                 return (session.Detach(), session.StepsAppended);
             });

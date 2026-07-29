@@ -67,6 +67,9 @@ public static class ScrollCapture
         return GetForegroundWindow() == hwnd;
     }
 
+    /// <summary>Window class name, for diagnostics logging.</summary>
+    public static string WindowClass(IntPtr hwnd) => ClassOf(hwnd);
+
     private static string ClassOf(IntPtr hwnd)
     {
         var buf = new char[256];
