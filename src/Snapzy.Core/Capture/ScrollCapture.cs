@@ -8,13 +8,16 @@ public class ScrollCaptureResult
     public Bitmap? Image { get; set; }
     public int Steps { get; set; }
     public string? Error { get; set; }
+    /// <summary>Scroll mechanism that moved the page, or null if none did.</summary>
+    public string? Strategy { get; set; }
 }
 
 /// <summary>
-/// Captures a window's full scrollable content by posting wheel messages and
-/// stitching client-area captures. Requires the target to honor posted
-/// WM_MOUSEWHEEL (most browsers/editors/lists do). Starts from the current
-/// scroll position. Runs synchronously - call from a background thread.
+/// Captures a window's full scrollable content by injecting scroll-downs and
+/// stitching client-area captures. Escalates through scroll mechanisms
+/// (posted wheel, WM_VSCROLL, PageDown key, SendInput wheel) until one moves
+/// the page, since no single mechanism works for every app. Starts from the
+/// current scroll position. Runs synchronously - call from a background thread.
 /// </summary>
 public static class ScrollCapture
 {
@@ -33,45 +36,168 @@ public static class ScrollCapture
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hwnd, char[] buffer, int maxCount);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint count, INPUT[] inputs, int size);
     private const int SM_CXVSCROLL = 2;
     private const uint GA_ROOT = 2;
 
     /// <summary>
     /// SetForegroundWindow silently fails without foreground rights, and a
     /// background target ignores (or never receives) wheel messages. Fall back
-    /// to the AttachThreadInput dance when the plain call did not stick.
+    /// to the AttachThreadInput dance, then the Alt-key unlock (an injected
+    /// keypress grants the caller foreground rights on stricter Win11 builds).
     /// </summary>
-    private static void ForceForeground(IntPtr hwnd)
+    private static bool ForceForeground(IntPtr hwnd)
     {
         SetForegroundWindow(hwnd);
         Thread.Sleep(120);
-        if (GetForegroundWindow() == hwnd) return;
+        if (GetForegroundWindow() == hwnd) return true;
         var fgThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
         var myThread = GetCurrentThreadId();
         AttachThreadInput(myThread, fgThread, true);
         BringWindowToTop(hwnd);
         SetForegroundWindow(hwnd);
         AttachThreadInput(myThread, fgThread, false);
+        if (GetForegroundWindow() == hwnd) return true;
+        SendKey(VK_MENU); // Alt press+release unlocks SetForegroundWindow
+        SetForegroundWindow(hwnd);
+        Thread.Sleep(120);
+        return GetForegroundWindow() == hwnd;
+    }
+
+    private static string ClassOf(IntPtr hwnd)
+    {
+        var buf = new char[256];
+        var n = GetClassName(hwnd, buf, buf.Length);
+        return n > 0 ? new string(buf, 0, n) : "?";
     }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT { public int X, Y; }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MOUSEINPUT
+    {
+        public int Dx, Dy;
+        public uint MouseData, Flags, Time;
+        public IntPtr ExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT
+    {
+        public ushort Vk, Scan;
+        public uint Flags, Time;
+        public IntPtr ExtraInfo;
+        public uint Pad0, Pad1; // pad union to MOUSEINPUT size
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct INPUT
+    {
+        [FieldOffset(0)] public uint Type;
+        [FieldOffset(8)] public MOUSEINPUT Mouse;
+        [FieldOffset(8)] public KEYBDINPUT Keyboard;
+    }
+
+    private const uint INPUT_MOUSE = 0;
+    private const uint INPUT_KEYBOARD = 1;
+    private const uint MOUSEEVENTF_WHEEL = 0x0800;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const ushort VK_MENU = 0x12;
+
+    private static void SendKey(ushort vk)
+    {
+        var inputs = new[]
+        {
+            new INPUT { Type = INPUT_KEYBOARD, Keyboard = new KEYBDINPUT { Vk = vk } },
+            new INPUT { Type = INPUT_KEYBOARD, Keyboard = new KEYBDINPUT { Vk = vk, Flags = KEYEVENTF_KEYUP } },
+        };
+        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+    }
+
     private const uint WM_MOUSEWHEEL = 0x020A;
+    private const uint WM_VSCROLL = 0x0115;
+    private const uint WM_KEYDOWN = 0x0100;
+    private const uint WM_KEYUP = 0x0101;
+    private const int SB_LINEDOWN = 1;
+    private const int VK_DOWN = 0x28;
     private const int WheelNotches = 3;
     private const int MaxStitchedHeight = 20000;
     private const int PollMs = 250;
     private const int SettleTimeoutMs = 1600; // message delivery + repaint can lag (EDR hooks, slow apps)
 
+    private static readonly string[] StrategyNames =
+        { "posted-wheel", "wm-vscroll", "arrow-keys", "sendinput-wheel" };
+    private const int LastStrategy = 3;
+
+    /// <summary>
+    /// Injects one scroll-down of roughly one wheel turn using the given
+    /// strategy. Not every app honors every mechanism (posted legacy wheel is
+    /// ignored by pointer-input/DirectManipulation apps; WM_VSCROLL only works
+    /// on classic Win32 controls; SendInput is swallowed by some EDR products),
+    /// so Run escalates through them until one moves the page.
+    /// </summary>
+    private static void PostScroll(int strategy, IntPtr wheelTarget, IntPtr hwnd,
+        int centerX, int centerY, Rectangle clientRect)
+    {
+        switch (strategy)
+        {
+            case 0: // posted WM_MOUSEWHEEL to the deepest child (fast path, most apps)
+                var wParam = (IntPtr)unchecked((((-120 * WheelNotches) & 0xFFFF) << 16));
+                var lParam = (IntPtr)((centerY << 16) | (centerX & 0xFFFF));
+                PostMessage(wheelTarget, WM_MOUSEWHEEL, wParam, lParam);
+                break;
+            case 1: // classic scrollbar protocol (native edit/list controls)
+                for (var i = 0; i < WheelNotches * 3; i++)
+                {
+                    PostMessage(wheelTarget, WM_VSCROLL, (IntPtr)SB_LINEDOWN, IntPtr.Zero);
+                    if (wheelTarget != hwnd) PostMessage(hwnd, WM_VSCROLL, (IntPtr)SB_LINEDOWN, IntPtr.Zero);
+                }
+                break;
+            case 2: // arrow-key burst (browsers/readers honor posted keys).
+                    // NOT PageDown: its near-viewport travel leaves so little
+                    // overlap that a sticky page header can swallow the probe
+                    // strip and lose the stitch; ~8 line-downs matches the
+                    // wheel rung's travel and keeps generous overlap.
+                for (var i = 0; i < 8; i++)
+                {
+                    PostMessage(wheelTarget, WM_KEYDOWN, (IntPtr)VK_DOWN, (IntPtr)1);
+                    PostMessage(wheelTarget, WM_KEYUP, (IntPtr)VK_DOWN, unchecked((IntPtr)0xC0000001));
+                }
+                break;
+            case 3: // hardware wheel at the content center - hover routing reaches
+                    // even pointer-input apps and background windows; the cursor
+                    // returns to its parking spot right away so overlays stay out
+                    // of the captured frames.
+                SetCursorPos(centerX, centerY);
+                Thread.Sleep(30);
+                var wheel = new[]
+                {
+                    new INPUT
+                    {
+                        Type = INPUT_MOUSE,
+                        Mouse = new MOUSEINPUT { MouseData = unchecked((uint)(-120 * WheelNotches)), Flags = MOUSEEVENTF_WHEEL },
+                    },
+                };
+                SendInput(1, wheel, Marshal.SizeOf<INPUT>());
+                Thread.Sleep(30);
+                SetCursorPos(clientRect.Right - 4, clientRect.Y + 4);
+                break;
+        }
+    }
+
     public static ScrollCaptureResult Run(IntPtr hwnd, Action<int>? onStep = null,
-        Func<bool>? isCancelled = null, int maxSteps = 60)
+        Func<bool>? isCancelled = null, int maxSteps = 60, int firstStrategy = 0)
     {
         var result = new ScrollCaptureResult();
         var cursorParked = false;
         POINT savedCursor = default;
         try
         {
-            ForceForeground(hwnd);
+            var fgVerified = ForceForeground(hwnd);
             Thread.Sleep(250);
 
             if (!GetClientRect(hwnd, out var cr) || cr.Right - cr.Left < 8 || cr.Bottom - cr.Top < 8)
@@ -120,34 +246,80 @@ public static class ScrollCapture
                 wheelTarget = RealChildWindowFromPoint(hwnd, centerClient);
                 if (wheelTarget == IntPtr.Zero) wheelTarget = hwnd;
             }
+            Log.Info($"Scroll capture: target={ClassOf(hwnd)} client={clientRect.Width}x{clientRect.Height} " +
+                     $"wheelTarget={ClassOf(wheelTarget)} foreground={fgVerified}");
 
             Bitmap accumulated = ScreenCapture.CaptureRect(clientRect);
             var prev = (Bitmap)accumulated.Clone();
             var furnitureTrimmed = false;
+            // Not every app honors the default scroll mechanism; escalate through
+            // the ladder until one moves the page, then lock it for the run.
+            var strategy = Math.Clamp(firstStrategy, 0, LastStrategy);
+            var strategyLocked = false;
             for (var step = 1; step <= maxSteps; step++)
             {
                 onStep?.Invoke(step);
                 if (isCancelled?.Invoke() == true) break;
 
-                var wParam = (IntPtr)unchecked((((-120 * WheelNotches) & 0xFFFF) << 16));
-                var lParam = (IntPtr)((centerY << 16) | (centerX & 0xFFFF));
-                PostMessage(wheelTarget, WM_MOUSEWHEEL, wParam, lParam);
-
-                // Poll until the content actually moves - message delivery and
-                // repaint latency vary between apps.
-                Bitmap current;
-                (int NewContentOffset, int StaticBottomRows)? match;
-                var waited = 0;
+                Bitmap current = null!;
+                (int NewContentOffset, int StaticBottomRows)? match = null;
                 while (true)
                 {
-                    Thread.Sleep(PollMs);
-                    waited += PollMs;
-                    current = ScreenCapture.CaptureRect(clientRect);
-                    match = ImageStitcher.FindOverlap(prev, current);
-                    var moved = match.HasValue &&
-                        match.Value.NewContentOffset < current.Height - match.Value.StaticBottomRows;
-                    if (moved || waited >= SettleTimeoutMs || isCancelled?.Invoke() == true) break;
+                    PostScroll(strategy, wheelTarget, hwnd, centerX, centerY, clientRect);
+
+                    // Poll until the content actually moves - message delivery and
+                    // repaint latency vary between apps.
+                    var moved = false;
+                    var waited = 0;
+                    while (true)
+                    {
+                        Thread.Sleep(PollMs);
+                        waited += PollMs;
+                        current = ScreenCapture.CaptureRect(clientRect);
+                        match = ImageStitcher.FindOverlap(prev, current);
+                        moved = match.HasValue &&
+                            match.Value.NewContentOffset < current.Height - match.Value.StaticBottomRows;
+                        if (moved || waited >= SettleTimeoutMs || isCancelled?.Invoke() == true) break;
+                        current.Dispose();
+                    }
+                    if (moved)
+                    {
+                        // Smooth-scrolling apps keep animating after the input
+                        // is injected; accepting a mid-animation frame lets the
+                        // NEXT injection start while this one is still
+                        // travelling, so a single step can span almost two
+                        // viewports and lose the overlap. Wait until the frame
+                        // stabilizes so each step covers one injection's travel.
+                        for (var settle = 0; settle < 6; settle++)
+                        {
+                            Thread.Sleep(150);
+                            var again = ScreenCapture.CaptureRect(clientRect);
+                            var still = ImageStitcher.FindOverlap(current, again);
+                            if (still.HasValue &&
+                                still.Value.NewContentOffset >= again.Height - still.Value.StaticBottomRows)
+                            {
+                                again.Dispose();
+                                break;
+                            }
+                            current.Dispose();
+                            current = again;
+                        }
+                        match = ImageStitcher.FindOverlap(prev, current);
+                        moved = match.HasValue &&
+                            match.Value.NewContentOffset < current.Height - match.Value.StaticBottomRows;
+                    }
+                    if (moved && !strategyLocked)
+                    {
+                        strategyLocked = true;
+                        result.Strategy = StrategyNames[strategy];
+                        Log.Info($"Scroll capture: page moves via {StrategyNames[strategy]}");
+                    }
+                    if (moved || strategyLocked || strategy >= LastStrategy ||
+                        isCancelled?.Invoke() == true) break;
                     current.Dispose();
+                    Log.Info($"Scroll capture: no movement via {StrategyNames[strategy]}, escalating");
+                    strategy++;
+                    if (!fgVerified) fgVerified = ForceForeground(hwnd);
                 }
                 if (match is null)
                 {
