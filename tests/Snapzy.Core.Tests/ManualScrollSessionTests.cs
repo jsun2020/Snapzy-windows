@@ -84,6 +84,19 @@ public class ManualScrollSessionTests
     }
 
     [Fact]
+    public void Tick_CountsDiagnosticsPerOutcome()
+    {
+        using var session = new ManualScrollCapture(View(0));
+        session.Tick(View(120));   // append
+        session.Tick(View(120));   // no movement
+        session.Tick(View(5000));  // lost
+        session.Tick(View(240));   // append (recovered)
+        Assert.Equal(2, session.StepsAppended);
+        Assert.Equal(1, session.NoMoveTicks);
+        Assert.Equal(1, session.LostTicks);
+    }
+
+    [Fact]
     public void Detach_ReturnsStitchWithSequentialContent()
     {
         var session = new ManualScrollCapture(View(0));

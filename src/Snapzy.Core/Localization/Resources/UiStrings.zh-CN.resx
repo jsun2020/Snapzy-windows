@@ -403,7 +403,7 @@
     <value>已捕获 {0} 段 - 继续滚动或点击保存</value>
   </data>
   <data name="Scroll_LostTrack" xml:space="preserve">
-    <value>跟丢了 - 请往回滚动一点</value>
+    <value>跟丢了 - 请慢慢往回滚动，直到恢复捕获</value>
   </data>
   <data name="Scroll_MaxLength" xml:space="preserve">
     <value>已达最大长度 - 请点击保存</value>

@@ -37,6 +37,11 @@ public sealed class ManualScrollCapture : IDisposable
 
     public TrackState State { get; private set; } = TrackState.NoMovement;
     public int StepsAppended { get; private set; }
+    /// <summary>Ticks that showed no new content (diagnostics).</summary>
+    public int NoMoveTicks { get; private set; }
+    /// <summary>Ticks whose frame did not overlap the stitch (diagnostics: a
+    /// high count with zero appends means the user out-scrolled the sampler).</summary>
+    public int LostTicks { get; private set; }
     public int Height => _accumulated.Height;
     public bool IsFull => _accumulated.Height >= MaxHeight;
 
@@ -56,6 +61,7 @@ public sealed class ManualScrollCapture : IDisposable
         if (match is null)
         {
             State = TrackState.Lost;
+            LostTicks++;
             current.Dispose();
             return;
         }
@@ -65,6 +71,7 @@ public sealed class ManualScrollCapture : IDisposable
             // Fully overlapping = no new content. Scrolling UP also lands here
             // or in Lost; either way nothing is appended and nothing is broken.
             State = TrackState.NoMovement;
+            NoMoveTicks++;
             current.Dispose();
             return;
         }

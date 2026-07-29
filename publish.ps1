@@ -1,6 +1,6 @@
 # Builds the portable Snapzy for Windows package.
 $ErrorActionPreference = "Stop"
-$version = "1.8.0"
+$version = "1.8.1"
 $root = $PSScriptRoot
 $out = Join-Path $root "publish\Snapzy"
 if (Test-Path $out) { Remove-Item -Recurse -Force $out }

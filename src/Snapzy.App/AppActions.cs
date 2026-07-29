@@ -122,19 +122,27 @@ public static class AppActions
             {
                 using var session = new Snapzy.Core.Capture.ManualScrollCapture(
                     Snapzy.Core.Capture.ScreenCapture.CaptureRect(area));
-                var sinceAuto = 500;
+                // Fast sampling: a fast wheel flick or scrollbar-thumb drag
+                // travels ~5000px/s; consecutive samples must stay within one
+                // viewport of each other or every frame is "lost" (this is
+                // exactly what happened at the original 250ms cadence). The
+                // tick itself costs ~65ms at full-screen size, so a 50ms sleep
+                // yields an effective ~115ms period (~600px per sample).
+                long lastAuto = 0;
                 while (!panel.SaveRequested && !panel.Cancelled)
                 {
-                    Thread.Sleep(250);
-                    sinceAuto += 250;
-                    if (panel.AutoScroll && !session.IsFull && sinceAuto >= 500)
+                    Thread.Sleep(50);
+                    if (panel.AutoScroll && !session.IsFull &&
+                        Environment.TickCount64 - lastAuto >= 500)
                     {
                         Snapzy.Core.Capture.ScrollCapture.PostWheelScroll(hwnd, area);
-                        sinceAuto = 0;
+                        lastAuto = Environment.TickCount64;
                     }
                     session.Tick(Snapzy.Core.Capture.ScreenCapture.CaptureRect(area));
                     panel.SetProgress(session.State, session.StepsAppended, session.IsFull);
                 }
+                Log.Info($"Manual scroll session: appends={session.StepsAppended} " +
+                         $"noMove={session.NoMoveTicks} lost={session.LostTicks}");
                 if (panel.Cancelled) return ((System.Drawing.Bitmap, int)?)null;
                 return (session.Detach(), session.StepsAppended);
             });

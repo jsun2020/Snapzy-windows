@@ -403,7 +403,7 @@
     <value>Captured {0} sections - keep scrolling or Save</value>
   </data>
   <data name="Scroll_LostTrack" xml:space="preserve">
-    <value>Lost track - scroll back up a little</value>
+    <value>Lost track - scroll back up slowly until capture resumes</value>
   </data>
   <data name="Scroll_MaxLength" xml:space="preserve">
     <value>Maximum length reached - click Save</value>
