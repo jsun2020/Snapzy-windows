@@ -49,7 +49,7 @@ public static class ScrollCapture
     /// to the AttachThreadInput dance, then the Alt-key unlock (an injected
     /// keypress grants the caller foreground rights on stricter Win11 builds).
     /// </summary>
-    private static bool ForceForeground(IntPtr hwnd)
+    public static bool ForceForeground(IntPtr hwnd)
     {
         SetForegroundWindow(hwnd);
         Thread.Sleep(120);
@@ -129,6 +129,56 @@ public static class ScrollCapture
     private const int PollMs = 250;
     private const int SettleTimeoutMs = 1600; // message delivery + repaint can lag (EDR hooks, slow apps)
 
+    /// <summary>
+    /// Screen-space client area of the window with the vertical-scrollbar
+    /// column trimmed (its arrows/thumb are static chrome inside otherwise-
+    /// scrolling rows). Returns false when the window has no usable area.
+    /// </summary>
+    public static bool GetCaptureArea(IntPtr hwnd, out Rectangle clientRect)
+    {
+        clientRect = Rectangle.Empty;
+        if (!GetClientRect(hwnd, out var cr) || cr.Right - cr.Left < 8 || cr.Bottom - cr.Top < 8)
+            return false;
+        var origin = new POINT { X = cr.Left, Y = cr.Top };
+        ClientToScreen(hwnd, ref origin);
+        clientRect = new Rectangle(origin.X, origin.Y, cr.Right - cr.Left, cr.Bottom - cr.Top);
+        var vscroll = GetSystemMetrics(SM_CXVSCROLL) + 2;
+        if (clientRect.Width > vscroll * 4) clientRect.Width -= vscroll;
+        return true;
+    }
+
+    /// <summary>
+    /// Posts one wheel-turn of scroll-down to the window's content view (the
+    /// deepest child at the client center). Used by the manual capture's
+    /// auto-scroll assist; most apps honor it, and the user can always scroll
+    /// by hand when one does not.
+    /// </summary>
+    public static void PostWheelScroll(IntPtr hwnd, Rectangle clientRect)
+    {
+        var centerX = clientRect.X + clientRect.Width / 2;
+        var centerY = clientRect.Y + clientRect.Height / 2;
+        var target = ResolveWheelTarget(hwnd, centerX, centerY);
+        PostScroll(0, target, hwnd, centerX, centerY, clientRect);
+    }
+
+    private static IntPtr ResolveWheelTarget(IntPtr hwnd, int centerX, int centerY)
+    {
+        // Wheel messages must reach the child that actually hosts the
+        // scrolling content, which can be nested several levels deep.
+        // RealChildWindowFromPoint returns only a FIRST-level child; for
+        // Chromium browsers that is the "Intermediate D3D Window", which
+        // silently discards posted wheel messages (verified: only the
+        // deepest child, Chrome_RenderWidgetHostHWND, scrolls). Guard via
+        // GA_ROOT and fall back to the old chain.
+        var centerPt = new POINT { X = centerX, Y = centerY };
+        var target = WindowFromPoint(centerPt);
+        if (target != IntPtr.Zero && GetAncestor(target, GA_ROOT) == hwnd) return target;
+        GetClientRect(hwnd, out var cr);
+        var centerClient = new POINT { X = (cr.Right - cr.Left) / 2, Y = (cr.Bottom - cr.Top) / 2 };
+        target = RealChildWindowFromPoint(hwnd, centerClient);
+        return target != IntPtr.Zero ? target : hwnd;
+    }
+
     private static readonly string[] StrategyNames =
         { "posted-wheel", "wm-vscroll", "arrow-keys", "sendinput-wheel" };
     private const int LastStrategy = 3;
@@ -200,20 +250,11 @@ public static class ScrollCapture
             var fgVerified = ForceForeground(hwnd);
             Thread.Sleep(250);
 
-            if (!GetClientRect(hwnd, out var cr) || cr.Right - cr.Left < 8 || cr.Bottom - cr.Top < 8)
+            if (!GetCaptureArea(hwnd, out var clientRect))
             {
                 result.Error = "window has no usable client area";
                 return result;
             }
-            var origin = new POINT { X = cr.Left, Y = cr.Top };
-            ClientToScreen(hwnd, ref origin);
-            var clientRect = new Rectangle(origin.X, origin.Y, cr.Right - cr.Left, cr.Bottom - cr.Top);
-
-            // Exclude the vertical-scrollbar column: its arrows/thumb are static
-            // chrome inside otherwise-scrolling rows and would break overlap
-            // detection (and look bad repeated in the stitch).
-            var vscroll = GetSystemMetrics(SM_CXVSCROLL) + 2;
-            if (clientRect.Width > vscroll * 4) clientRect.Width -= vscroll;
 
             // Software cursor-highlighter overlays (locate-pointer halos,
             // presentation pointers) are drawn into the screen pixels and
@@ -230,22 +271,7 @@ public static class ScrollCapture
             var centerX = clientRect.X + clientRect.Width / 2;
             var centerY = clientRect.Y + clientRect.Height / 2;
 
-            // Wheel messages must reach the child that actually hosts the
-            // scrolling content, which can be nested several levels deep.
-            // RealChildWindowFromPoint returns only a FIRST-level child; for
-            // Chromium browsers that is the "Intermediate D3D Window", which
-            // silently discards posted wheel messages (verified: only the
-            // deepest child, Chrome_RenderWidgetHostHWND, scrolls). The target
-            // is foreground here, so the deepest window at the client center
-            // belongs to it; guard via GA_ROOT and fall back to the old chain.
-            var centerPt = new POINT { X = centerX, Y = centerY };
-            var wheelTarget = WindowFromPoint(centerPt);
-            if (wheelTarget == IntPtr.Zero || GetAncestor(wheelTarget, GA_ROOT) != hwnd)
-            {
-                var centerClient = new POINT { X = (cr.Right - cr.Left) / 2, Y = (cr.Bottom - cr.Top) / 2 };
-                wheelTarget = RealChildWindowFromPoint(hwnd, centerClient);
-                if (wheelTarget == IntPtr.Zero) wheelTarget = hwnd;
-            }
+            var wheelTarget = ResolveWheelTarget(hwnd, centerX, centerY);
             Log.Info($"Scroll capture: target={ClassOf(hwnd)} client={clientRect.Width}x{clientRect.Height} " +
                      $"wheelTarget={ClassOf(wheelTarget)} foreground={fgVerified}");
 

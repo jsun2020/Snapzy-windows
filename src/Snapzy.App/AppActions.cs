@@ -94,7 +94,12 @@ public static class AppActions
         ScrollCaptureWindow(sel.Hwnd);
     }
 
-    /// <summary>Scroll-captures a window (from the tray flow or the overlay toolbar).</summary>
+    /// <summary>
+    /// Long screenshot of a window (from the tray flow or the overlay toolbar).
+    /// The USER scrolls (wheel / scrollbar / keys) while Snapzy stitches
+    /// whatever new content appears; Save on the control panel finishes.
+    /// The Auto button posts wheel scrolls for hands-free operation.
+    /// </summary>
     internal static async void ScrollCaptureWindow(IntPtr hwnd)
     {
         try
@@ -104,25 +109,44 @@ public static class AppActions
                 Tray?.Balloon("Snapzy", Strings.Get("Toast_ScrollNeedWindow"));
                 return;
             }
-            var progress = new Overlay.ScrollProgressWindow();
-            progress.Show();
-            var result = await Task.Run(() => Snapzy.Core.Capture.ScrollCapture.Run(
-                hwnd,
-                onStep: s => progress.SetStep(s),
-                isCancelled: () => progress.Cancelled));
-            progress.Close();
-
-            if (result.Image is null)
+            if (!Snapzy.Core.Capture.ScrollCapture.GetCaptureArea(hwnd, out var area))
             {
-                Log.Error("Scroll capture failed: " + result.Error);
-                Tray?.Balloon("Snapzy", Strings.Get("Toast_CaptureFailed") + ": " + result.Error);
+                Tray?.Balloon("Snapzy", Strings.Get("Toast_CaptureFailed"));
                 return;
             }
-            using var bmp = result.Image;
+            Snapzy.Core.Capture.ScrollCapture.ForceForeground(hwnd);
+            var panel = new Overlay.ScrollManualWindow();
+            panel.Show();
+            Log.Info($"Manual scroll capture: area={area.Width}x{area.Height}");
+            var result = await Task.Run(() =>
+            {
+                using var session = new Snapzy.Core.Capture.ManualScrollCapture(
+                    Snapzy.Core.Capture.ScreenCapture.CaptureRect(area));
+                var sinceAuto = 500;
+                while (!panel.SaveRequested && !panel.Cancelled)
+                {
+                    Thread.Sleep(250);
+                    sinceAuto += 250;
+                    if (panel.AutoScroll && !session.IsFull && sinceAuto >= 500)
+                    {
+                        Snapzy.Core.Capture.ScrollCapture.PostWheelScroll(hwnd, area);
+                        sinceAuto = 0;
+                    }
+                    session.Tick(Snapzy.Core.Capture.ScreenCapture.CaptureRect(area));
+                    panel.SetProgress(session.State, session.StepsAppended, session.IsFull);
+                }
+                if (panel.Cancelled) return ((System.Drawing.Bitmap, int)?)null;
+                return (session.Detach(), session.StepsAppended);
+            });
+            panel.Close();
+            if (result is null)
+            {
+                Log.Info("Manual scroll capture cancelled");
+                return;
+            }
+            using var bmp = result.Value.Item1;
             var entry = CaptureFlow.SaveAndIndex(bmp, Settings, History);
-            Log.Info($"Scroll capture: {result.Steps} steps");
-            if (result.Steps == 0)
-                Tray?.Balloon("Snapzy", Strings.Get("Toast_ScrollNoMove"));
+            Log.Info($"Manual scroll capture: {result.Value.Item2} appends, {bmp.Width}x{bmp.Height}");
             CaptureFlow.RunPostActions(entry, History, Settings, forceAnnotate: false);
         }
         catch (Exception ex)

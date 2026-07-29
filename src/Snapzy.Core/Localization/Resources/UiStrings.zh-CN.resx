@@ -396,6 +396,24 @@
   <data name="Scroll_Cancel" xml:space="preserve">
     <value>停止</value>
   </data>
+  <data name="Scroll_ManualHint" xml:space="preserve">
+    <value>向下滚动窗口，完成后点击保存</value>
+  </data>
+  <data name="Scroll_TrackingFmt" xml:space="preserve">
+    <value>已捕获 {0} 段 - 继续滚动或点击保存</value>
+  </data>
+  <data name="Scroll_LostTrack" xml:space="preserve">
+    <value>跟丢了 - 请往回滚动一点</value>
+  </data>
+  <data name="Scroll_MaxLength" xml:space="preserve">
+    <value>已达最大长度 - 请点击保存</value>
+  </data>
+  <data name="Scroll_AutoBtn" xml:space="preserve">
+    <value>自动</value>
+  </data>
+  <data name="Scroll_Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
   <data name="Toast_ScrollNeedWindow" xml:space="preserve">
     <value>请在遮罩中点击要滚动截图的窗口</value>
   </data>

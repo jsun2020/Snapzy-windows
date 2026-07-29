@@ -104,13 +104,15 @@ improves accuracy.
 
 ## Scrolling capture (v1.1)
 
-Tray menu -> Scrolling Capture, then click the target window in the overlay.
-Snapzy scrolls the window and stitches the frames into one tall image, starting
-from the current scroll position. If the window ignores one scroll mechanism,
-Snapzy escalates through several (wheel message, scrollbar message, arrow keys,
-hardware wheel input - v1.7.3) until one moves the page, so browsers, editors,
-file lists and most modern apps work. Heavily animated pages may stop the
-stitch early - the partial result is kept.
+Tray menu -> Scrolling Capture, then click the target window in the overlay
+(or use the long-screenshot button on the selection toolbar). YOU scroll the
+window (v1.8) - mouse wheel, scrollbar drag, or keys - and Snapzy stitches
+whatever new content appears; click Save on the control panel when done.
+Because your own scrolling drives it, it works with any app and you see
+exactly what gets captured. If you scroll too far in one jump the panel says
+"Lost track - scroll back up a little" and stitching resumes as soon as the
+content overlaps again. The panel's Auto button scrolls for you (wheel
+messages, works in most apps); press it again to stop and take over.
 
 ## Recording
 
@@ -144,11 +146,12 @@ tray menu, other windows use the new language when reopened).
 - Mixed-DPI multi-monitor setups: the selection overlay uses the primary monitor's
   scale for its visuals; captured pixels are always correct.
 - Theme setting affects Snapzy's own windows only.
-- Scrolling capture: tries four scroll mechanisms in turn (v1.7.3) and needs the
-  window to honor at least one; captures content from the current scroll
-  position downward; window chrome (scrollbars) is trimmed automatically,
-  sticky in-page headers are not. On Windows 10 builds before 2004 the progress
-  toast may appear in the captured image.
+- Scrolling capture: captures content from the starting scroll position
+  downward; window chrome (scrollbars) is trimmed automatically, sticky
+  in-page headers are not. Software cursor-highlighter overlays near the
+  bottom of the window can occasionally appear in the stitched image (move
+  the mouse to the side while scrolling). On Windows 10 builds before 2004
+  the control panel may appear in the captured image.
 - OCR of very tall images is processed in 2000px slices with a 40px overlap; an
   occasional duplicated line at a slice boundary is possible.
 - Folder size is ~300 MB unpacked, dominated by the bundled full ffmpeg build

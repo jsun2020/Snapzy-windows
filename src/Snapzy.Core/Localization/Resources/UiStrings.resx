@@ -396,6 +396,24 @@
   <data name="Scroll_Cancel" xml:space="preserve">
     <value>Stop</value>
   </data>
+  <data name="Scroll_ManualHint" xml:space="preserve">
+    <value>Scroll the window down, then click Save</value>
+  </data>
+  <data name="Scroll_TrackingFmt" xml:space="preserve">
+    <value>Captured {0} sections - keep scrolling or Save</value>
+  </data>
+  <data name="Scroll_LostTrack" xml:space="preserve">
+    <value>Lost track - scroll back up a little</value>
+  </data>
+  <data name="Scroll_MaxLength" xml:space="preserve">
+    <value>Maximum length reached - click Save</value>
+  </data>
+  <data name="Scroll_AutoBtn" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="Scroll_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
   <data name="Toast_ScrollNeedWindow" xml:space="preserve">
     <value>Click a window in the overlay to scroll-capture it</value>
   </data>
