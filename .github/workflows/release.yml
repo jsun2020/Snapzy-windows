@@ -1,0 +1,113 @@
+name: release
+
+# Builds the portable package and publishes it as a GitHub Release asset, so the
+# README download link always points at a real, current zip.
+#   - push a tag v1.8.2  -> builds and creates/updates the v1.8.2 release
+#   - run manually       -> builds and uploads a workflow artifact only (no release)
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # release notes diff against the previous tag
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # CaptureTests drive real screen capture and window enumeration; they are
+      # excluded here for the same reason as locally - a CI session has no
+      # meaningful desktop content to capture.
+      - name: Unit tests
+        run: dotnet test --filter "FullyQualifiedName!~CaptureTests"
+
+      # Same source as the locally bundled binary (BtbN GPL build with
+      # ddagrab/gdigrab + libx264); the runner has no ffmpeg of its own.
+      - name: Fetch ffmpeg
+        shell: pwsh
+        run: |
+          $url = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip'
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip -UseBasicParsing
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-dl
+          $exe = (Get-ChildItem ffmpeg-dl -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName
+          if (-not $exe) { throw "ffmpeg.exe not found in the downloaded archive" }
+          & $exe -version | Select-Object -First 1
+          "FFMPEG_EXE=$exe" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build portable package
+        shell: pwsh
+        run: |
+          # On a tag build the tag IS the version claim - publish.ps1 fails if it
+          # disagrees with Snapzy.App.csproj, so a mislabelled zip cannot ship.
+          $tagVersion = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '' }
+          ./publish.ps1 -Version $tagVersion -FfmpegPath $env:FFMPEG_EXE
+          $zip = Get-ChildItem publish\Snapzy-Windows-v*-portable.zip | Select-Object -First 1
+          if (-not $zip) { throw "no portable zip produced" }
+          "ZIP_PATH=$($zip.FullName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ZIP_NAME=$($zip.Name)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      # What the user downloads must contain a runnable app - check the artifact
+      # itself, not the build tree it came from.
+      - name: Verify zip contents
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          # Compress-Archive writes backslash separators on Windows PowerShell and
+          # forward slashes elsewhere - normalize before comparing.
+          $entries = [IO.Compression.ZipFile]::OpenRead($env:ZIP_PATH).Entries.FullName -replace '\\', '/'
+          foreach ($required in 'Snapzy/Snapzy.exe', 'Snapzy/ffmpeg/ffmpeg.exe', 'Snapzy/zh-CN/Snapzy.Core.resources.dll') {
+            if ($entries -notcontains $required) { throw "$required missing from $env:ZIP_NAME" }
+          }
+          $hash = (Get-FileHash $env:ZIP_PATH -Algorithm SHA256).Hash
+          "$hash  $env:ZIP_NAME" | Out-File "$env:ZIP_PATH.sha256" -Encoding ascii
+          "SHA256=$hash" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "$env:ZIP_NAME  $([math]::Round((Get-Item $env:ZIP_PATH).Length / 1MB, 1)) MB  sha256=$hash"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: |
+            ${{ env.ZIP_PATH }}
+            ${{ env.ZIP_PATH }}.sha256
+          retention-days: 14
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $prev = git describe --tags --abbrev=0 "$tag^" 2>$null
+          $log = if ($prev) { git log --no-merges --pretty=format:'- %s' "$prev..$tag" } else { git log --no-merges --pretty=format:'- %s' -n 20 }
+          @(
+            "### Install",
+            "",
+            "1. Download ``$env:ZIP_NAME`` below and extract it anywhere (do not run from inside the zip).",
+            "2. Run ``Snapzy.exe`` - no installer, no admin rights, no .NET runtime needed.",
+            "3. The exe is unsigned: if SmartScreen appears, click **More info -> Run anyway**.",
+            "",
+            "SHA256: ``$env:SHA256``",
+            "",
+            "### Changes",
+            "",
+            ($log -join "`n")
+          ) | Out-File notes.md -Encoding utf8
+          gh release view $tag *> $null
+          $exists = $LASTEXITCODE -eq 0
+          if ($exists) {
+            gh release upload $tag "$env:ZIP_PATH" "$env:ZIP_PATH.sha256" --clobber
+            gh release edit $tag --notes-file notes.md
+          } else {
+            gh release create $tag "$env:ZIP_PATH" "$env:ZIP_PATH.sha256" --title "Snapzy for Windows $tag" --notes-file notes.md
+          }
+          gh release view $tag --json assets --jq '.assets[].name'

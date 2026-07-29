@@ -1,12 +1,22 @@
 # Snapzy for Windows
 
-A portable Windows port of [Snapzy](https://github.com/inject-cell/Snapzy) - screenshot,
+A portable Windows port of [Snapzy](https://github.com/duongductrong/Snapzy) - screenshot,
 screen recording, OCR and annotation from the system tray. No installer, no admin
 rights, no .NET runtime required.
 
+## Download
+
+**[Get the latest portable zip](https://github.com/jsun2020/Snapzy-windows/releases/latest)**
+- grab `Snapzy-Windows-v<version>-portable.zip` from the release's Assets list.
+
+Every `v*` tag is built and published automatically by
+[.github/workflows/release.yml](.github/workflows/release.yml), so the latest
+release always matches the tagged source. Each release also carries a `.sha256`
+file if you want to verify the download.
+
 ## Quick start
 
-1. Extract `Snapzy-Windows-v1.1.0-portable.zip` anywhere (do not run from inside the zip).
+1. Extract the portable zip anywhere (do not run it from inside the zip).
 2. Run `Snapzy.exe`. The icon appears in the system tray.
 3. Press `Ctrl+Shift+4` and drag to take your first screenshot.
 
@@ -173,10 +183,22 @@ Delete the folder. If you enabled Launch at login, also remove `Snapzy.lnk` from
 ## Building from source
 
 ```powershell
-cd windows
 dotnet test          # unit tests (Snapzy.Core)
 .\publish.ps1        # produces publish\Snapzy + the portable zip
 ```
 
-Requires the .NET 10 SDK. `publish.ps1` copies `C:\Windows\system32\ffmpeg.exe`
-into the package; point it at another ffmpeg if yours lives elsewhere.
+Requires the .NET 10 SDK. The version comes from `src\Snapzy.App\Snapzy.App.csproj`
+- bump it there and nowhere else. `publish.ps1` bundles `C:\Windows\system32\ffmpeg.exe`
+by default; pass `-FfmpegPath <exe>` for a different build.
+
+## Releasing
+
+1. Bump `<Version>` in `src\Snapzy.App\Snapzy.App.csproj`, commit.
+2. `git tag v<version> && git push origin master v<version>`.
+
+The release workflow then runs the unit tests, downloads the BtbN ffmpeg build,
+runs `publish.ps1 -Version <tag>` (which fails if the tag and the csproj version
+disagree), verifies the zip actually contains `Snapzy.exe`, and creates the
+GitHub Release with the zip plus its SHA256. Running the workflow manually
+(Actions -> release -> Run workflow) builds the same zip as a downloadable
+workflow artifact without publishing a release.
